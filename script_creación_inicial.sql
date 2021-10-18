@@ -32,8 +32,30 @@ TENER EN CUENTA
 	4. FORMATO FECHA/HORA --*/
   
   
-------------- CREACION DE TABLAS -----------------------
---faltan drops
+------------- DROP TABLAS -----------------------
+
+IF EXISTS (select * from sys.objects where object_id = OBJECT_ID('LOS_GEDEDES.Tarea_Orden') and type = 'U')
+	DROP TABLE LOS_GEDEDES.Tarea_Orden
+
+IF EXISTS (select * from sys.objects where object_id = OBJECT_ID('LOS_GEDEDES.Orden_Trabajo') and type = 'U')
+	DROP TABLE LOS_GEDEDES.Orden_Trabajo
+
+IF EXISTS (select * from sys.objects where object_id = OBJECT_ID('LOS_GEDEDES.Estado') and type = 'U')
+	DROP TABLE LOS_GEDEDES.Estado
+
+IF EXISTS (select * from sys.objects where object_id = OBJECT_ID('LOS_GEDEDES.Viaje') and type = 'U')
+	DROP TABLE LOS_GEDEDES.Viaje
+
+IF EXISTS (select * from sys.objects where object_id = OBJECT_ID('LOS_GEDEDES.Chofer') and type = 'U')
+	DROP TABLE LOS_GEDEDES.Chofer
+
+IF EXISTS (select * from sys.objects where object_id = OBJECT_ID('LOS_GEDEDES.Recorrido') and type = 'U')
+	DROP TABLE LOS_GEDEDES.Recorrido
+
+IF EXISTS (select * from sys.objects where object_id = OBJECT_ID('LOS_GEDEDES.Camion') and type = 'U')
+	DROP TABLE LOS_GEDEDES.Camion
+
+------------ CREACION DE TABLAS ----------------
 
 IF EXISTS (select * from sys.objects where object_id = OBJECT_ID('LOS_GEDEDES.Tarea_Orden') and type = 'U')
 	DROP TABLE LOS_GEDEDES.Tarea_Orden
@@ -128,11 +150,10 @@ CREATE TABLE LOS_GEDEDES.Tarea_Orden(
 	fechaInicioPlani DATETIME2(3),
 	fechaInicioReal DATETIME2(3),/*Esta se supone que es null?*/
 	fechaFin DATETIME2(3),
-	PRIMARY KEY (nroOrden),
-	PRIMARY KEY (nroTarea),
+	PRIMARY KEY (nroOrden, nroTarea),
 	FOREIGN KEY (nroOrden) REFERENCES LOS_GEDEDES.Orden_Trabajo,
-	FOREIGN KEY (nroTarea) REFERENCES LOS_GEDEDES.Tarea,
-	FOREIGN KEY (legajoMecanico) REFERENCES LOS_GEDEDES.Mecanico,
+	--FOREIGN KEY (nroTarea) REFERENCES LOS_GEDEDES.Tarea, /*Esta esta comentada porque no esta la tabla tarea*/
+	--FOREIGN KEY (legajoMecanico) REFERENCES LOS_GEDEDES.Mecanico, /*Esta esta comentada porque no esta la tabla mecanico*/
 	CHECK(fechaInicioPlani < fechaFin AND fechaInicioReal < fechaFin)
 );
 ---------------------------------------------------------------------------------------
