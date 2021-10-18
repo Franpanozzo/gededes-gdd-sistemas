@@ -32,44 +32,113 @@ TENER EN CUENTA
 	4. FORMATO FECHA/HORA --*/
   
   
-------------- CREACION DE TABLAS -----------------------
---faltan drops
+------------- DROP TABLAS -----------------------
+
+IF EXISTS (select * from sys.objects where object_id = OBJECT_ID('LOS_GEDEDES.Tarea_Orden') and type = 'U')
+	DROP TABLE LOS_GEDEDES.Tarea_Orden
+
+IF EXISTS (select * from sys.objects where object_id = OBJECT_ID('LOS_GEDEDES.Orden_Trabajo') and type = 'U')
+	DROP TABLE LOS_GEDEDES.Orden_Trabajo
+
+IF EXISTS (select * from sys.objects where object_id = OBJECT_ID('LOS_GEDEDES.Estado') and type = 'U')
+	DROP TABLE LOS_GEDEDES.Estado
+
+IF EXISTS (select * from sys.objects where object_id = OBJECT_ID('LOS_GEDEDES.Viaje') and type = 'U')
+	DROP TABLE LOS_GEDEDES.Viaje
+
+IF EXISTS (select * from sys.objects where object_id = OBJECT_ID('LOS_GEDEDES.Chofer') and type = 'U')
+	DROP TABLE LOS_GEDEDES.Chofer
+
+IF EXISTS (select * from sys.objects where object_id = OBJECT_ID('LOS_GEDEDES.Recorrido') and type = 'U')
+	DROP TABLE LOS_GEDEDES.Recorrido
+
+IF EXISTS (select * from sys.objects where object_id = OBJECT_ID('LOS_GEDEDES.Camion') and type = 'U')
+	DROP TABLE LOS_GEDEDES.Camion
+
+------------ CREACION DE TABLAS ----------------
 
 CREATE TABLE LOS_GEDEDES.Camion(
-patente NVARCHAR(255),
-nroChasis NVARCHAR(255),
-fechaAlta DATETIME2(3),
-marca NVARCHAR(255),
-modelo NVARCHAR(255),
-velocidadMaxima INT,
-capacidadTanque INT,
-capacidadCarga INT,
-PRIMARY KEY (patente),
+	patente NVARCHAR(255),
+	nroChasis NVARCHAR(255),
+	fechaAlta DATETIME2(3),
+	marca NVARCHAR(255),
+	modelo NVARCHAR(255),
+	velocidadMaxima INT,
+	capacidadTanque INT,
+	capacidadCarga INT,
+	PRIMARY KEY (patente),
 );
 
 CREATE TABLE LOS_GEDEDES.Recorrido(
-nroRecorrido INT,
-precioRecorrido DECIMAL(18,2),
-ciudadOrigen NVARCHAR(255),
-ciudadDestino NVARCHAR(255),
-recorridoKM INT,
-PRIMARY KEY (nroRecorrido),
+	nroRecorrido INT,
+	precioRecorrido DECIMAL(18,2),
+	ciudadOrigen NVARCHAR(255),
+	ciudadDestino NVARCHAR(255),
+	recorridoKM INT,
+	PRIMARY KEY (nroRecorrido),
+);
+
+
+CREATE TABLE LOS_GEDEDES.Chofer(
+	nroLegajo INT,
+	nombre NVARCHAR(255),
+	apellido NVARCHAR(255),
+	dni DECIMAL(18,0),
+	direccion NVARCHAR(255),
+	telefono INT,
+	mail NVARCHAR(255),
+	fecha_nac INT,
+	costo_hora INT,
+	PRIMARY KEY (nroLegajo)
 );
 
 
 CREATE TABLE LOS_GEDEDES.Viaje(
-nroViaje INT IDENTITY(1,1),
-camionID NVARCHAR(255),
-choferID INT,
-recorrido INT,
-precioRecorrido INT,
-fechaInicio DATETIME2(7),
-fechaFin DATETIME2(3),
-naftaConsumida decimal(18,2),
-PRIMARY KEY (nroViaje),
-FOREIGN KEY (camionID) REFERENCES LOS_GEDEDES.Camion,
-FOREIGN KEY (choferID) REFERENCES LOS_GEDEDES.Persona,
-FOREIGN KEY (recorrido) REFERENCES LOS_GEDEDES.Recorrido,
-CHECK(fechaInicio < fechaFin)
+	nroViaje INT IDENTITY(1,1),
+	camionID NVARCHAR(255),
+	choferID INT,
+	recorrido INT,
+	precioRecorrido INT,
+	fechaInicio DATETIME2(7),
+	fechaFin DATETIME2(3),
+	naftaConsumida decimal(18,2),
+	PRIMARY KEY (nroViaje),
+	FOREIGN KEY (camionID) REFERENCES LOS_GEDEDES.Camion,
+	FOREIGN KEY (choferID) REFERENCES LOS_GEDEDES.Chofer,
+	FOREIGN KEY (recorrido) REFERENCES LOS_GEDEDES.Recorrido,
+	CHECK(fechaInicio < fechaFin)
+);
+
+
+CREATE TABLE LOS_GEDEDES.Estado(
+	codigo NVARCHAR(255),
+	descripcion NVARCHAR(255),
+	PRIMARY KEY (codigo)
+);
+
+
+CREATE TABLE LOS_GEDEDES.Orden_Trabajo(
+	nroOrden INT IDENTITY(1,1),
+	camionID NVARCHAR(255),
+	estado NVARCHAR(255),
+	fechaCarga NVARCHAR(255),/*Yo lo hubiera puesto como un DATETIME2 pero la columna era varchar*/
+	PRIMARY KEY (nroOrden),
+	FOREIGN KEY (camionID) REFERENCES LOS_GEDEDES.Camion,
+	FOREIGN KEY (estado) REFERENCES LOS_GEDEDES.Estado
+);
+
+
+CREATE TABLE LOS_GEDEDES.Tarea_Orden(
+	nroOrden INT,
+	nroTarea INT,
+	legajoMecanico INT,
+	fechaInicioPlani DATETIME2(3),
+	fechaInicioReal DATETIME2(3),/*Esta se supone que es null?*/
+	fechaFin DATETIME2(3),
+	PRIMARY KEY (nroOrden, nroTarea),
+	FOREIGN KEY (nroOrden) REFERENCES LOS_GEDEDES.Orden_Trabajo,
+	--FOREIGN KEY (nroTarea) REFERENCES LOS_GEDEDES.Tarea, /*Esta esta comentada porque no esta la tabla tarea*/
+	--FOREIGN KEY (legajoMecanico) REFERENCES LOS_GEDEDES.Mecanico, /*Esta esta comentada porque no esta la tabla mecanico*/
+	CHECK(fechaInicioPlani < fechaFin AND fechaInicioReal < fechaFin)
 );
 
