@@ -57,21 +57,6 @@ IF EXISTS (select * from sys.objects where object_id = OBJECT_ID('LOS_GEDEDES.Ca
 
 ------------ CREACION DE TABLAS ----------------
 
-IF EXISTS (select * from sys.objects where object_id = OBJECT_ID('LOS_GEDEDES.Tarea_Orden') and type = 'U')
-	DROP TABLE LOS_GEDEDES.Tarea_Orden
-IF EXISTS (select * from sys.objects where object_id = OBJECT_ID('LOS_GEDEDES.Orden_Trabajo') and type = 'U')
-	DROP TABLE LOS_GEDEDES.Orden_Trabajo
-IF EXISTS (select * from sys.objects where object_id = OBJECT_ID('LOS_GEDEDES.Estado') and type = 'U')
-	DROP TABLE LOS_GEDEDES.Estado
-IF EXISTS (select * from sys.objects where object_id = OBJECT_ID('LOS_GEDEDES.Viaje') and type = 'U')
-	DROP TABLE LOS_GEDEDES.Viaje
-IF EXISTS (select * from sys.objects where object_id = OBJECT_ID('LOS_GEDEDES.Chofer') and type = 'U')
-	DROP TABLE LOS_GEDEDES.Chofer
-IF EXISTS (select * from sys.objects where object_id = OBJECT_ID('LOS_GEDEDES.Recorrido') and type = 'U')
-	DROP TABLE LOS_GEDEDES.Recorrido
-IF EXISTS (select * from sys.objects where object_id = OBJECT_ID('LOS_GEDEDES.Camion') and type = 'U')
-	DROP TABLE LOS_GEDEDES.Camion
-
 CREATE TABLE LOS_GEDEDES.Camion(
 	patente NVARCHAR(255),
 	nroChasis NVARCHAR(255),
