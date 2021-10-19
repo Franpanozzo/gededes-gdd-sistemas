@@ -46,11 +46,14 @@ IF EXISTS (select * from sys.objects where object_id = OBJECT_ID('LOS_GEDEDES.Es
 IF EXISTS (select * from sys.objects where object_id = OBJECT_ID('LOS_GEDEDES.Viaje') and type = 'U')
 	DROP TABLE LOS_GEDEDES.Viaje
 
-IF EXISTS (select * from sys.objects where object_id = OBJECT_ID('LOS_GEDEDES.Chofer') and type = 'U')
-	DROP TABLE LOS_GEDEDES.Chofer
-
 IF EXISTS (select * from sys.objects where object_id = OBJECT_ID('LOS_GEDEDES.Recorrido') and type = 'U')
 	DROP TABLE LOS_GEDEDES.Recorrido
+	
+IF EXISTS (select * from sys.objects where object_id = OBJECT_ID('LOS_GEDEDES.Ciudad') and type = 'U')
+	DROP TABLE LOS_GEDEDES.Ciudad
+
+IF EXISTS (select * from sys.objects where object_id = OBJECT_ID('LOS_GEDEDES.Chofer') and type = 'U')
+	DROP TABLE LOS_GEDEDES.Chofer
 
 IF EXISTS (select * from sys.objects where object_id = OBJECT_ID('LOS_GEDEDES.Camion') and type = 'U')
 	DROP TABLE LOS_GEDEDES.Camion
@@ -58,55 +61,62 @@ IF EXISTS (select * from sys.objects where object_id = OBJECT_ID('LOS_GEDEDES.Ca
 ------------ CREACION DE TABLAS ----------------
 
 CREATE TABLE LOS_GEDEDES.Camion(
-	patente NVARCHAR(255),
-	nroChasis NVARCHAR(255),
-	fechaAlta DATETIME2(3),
-	marca NVARCHAR(255),
-	modelo NVARCHAR(255),
-	velocidadMaxima INT,
-	capacidadTanque INT,
-	capacidadCarga INT,
-	PRIMARY KEY (patente),
-);
-
-CREATE TABLE LOS_GEDEDES.Recorrido(
-	nroRecorrido INT,
-	precioRecorrido DECIMAL(18,2),
-	ciudadOrigen NVARCHAR(255),
-	ciudadDestino NVARCHAR(255),
-	recorridoKM INT,
-	PRIMARY KEY (nroRecorrido),
+patente NVARCHAR(255),
+nroChasis NVARCHAR(255),
+nroMotor NVARCHAR(255),
+fechaAlta DATETIME2(3),
+--codigoMarca INT,
+PRIMARY KEY (patente),
+--FOREIGN KEY (codigoMarca) REFERENCES LOS_GEDEDES.Marca
 );
 
 
 CREATE TABLE LOS_GEDEDES.Chofer(
-	nroLegajo INT,
-	nombre NVARCHAR(255),
-	apellido NVARCHAR(255),
-	dni DECIMAL(18,0),
-	direccion NVARCHAR(255),
-	telefono INT,
-	mail NVARCHAR(255),
-	fecha_nac INT,
-	costo_hora INT,
-	PRIMARY KEY (nroLegajo)
+nroLegajo INT,
+nombre NVARCHAR(255),
+apellido NVARCHAR(255),
+dni DECIMAL(18,0),
+direccion NVARCHAR(255),
+telefono INT,
+mail NVARCHAR(255),
+fecha_nac INT,
+costo_hora INT,
+PRIMARY KEY (nroLegajo)
 );
 
 
+CREATE TABLE LOS_GEDEDES.Ciudad(
+codigoCiudad INT IDENTITY(1,1),
+nombre NVARCHAR(255)
+PRIMARY KEY (codigoCiudad)
+);
+
+
+CREATE TABLE LOS_GEDEDES.Recorrido(
+nroRecorrido INT IDENTITY(1,1),
+precioRecorrido DECIMAL(18,2),
+ciudadOrigen INT,
+ciudadDestino INT,
+recorridoKM INT,
+PRIMARY KEY (nroRecorrido),
+FOREIGN KEY (ciudadOrigen) REFERENCES LOS_GEDEDES.Ciudad,
+FOREIGN KEY (ciudadDestino) REFERENCES LOS_GEDEDES.Ciudad
+);
+
 CREATE TABLE LOS_GEDEDES.Viaje(
-	nroViaje INT IDENTITY(1,1),
-	camionID NVARCHAR(255),
-	choferID INT,
-	recorrido INT,
-	precioRecorrido INT,
-	fechaInicio DATETIME2(7),
-	fechaFin DATETIME2(3),
-	naftaConsumida decimal(18,2),
-	PRIMARY KEY (nroViaje),
-	FOREIGN KEY (camionID) REFERENCES LOS_GEDEDES.Camion,
-	FOREIGN KEY (choferID) REFERENCES LOS_GEDEDES.Chofer,
-	FOREIGN KEY (recorrido) REFERENCES LOS_GEDEDES.Recorrido,
-	CHECK(fechaInicio < fechaFin)
+nroViaje INT IDENTITY(1,1),
+patenteCamion NVARCHAR(255),
+choferLegajo INT,
+recorrido INT,
+precioRecorrido INT,
+fechaInicio DATETIME2(7),
+fechaFin DATETIME2(3),
+naftaConsumida decimal(18,2),
+PRIMARY KEY (nroViaje),
+FOREIGN KEY (patenteCamion) REFERENCES LOS_GEDEDES.Camion,
+FOREIGN KEY (choferLegajo) REFERENCES LOS_GEDEDES.Chofer,
+FOREIGN KEY (recorrido) REFERENCES LOS_GEDEDES.Recorrido,
+CHECK(fechaInicio < fechaFin)
 );
 
 
@@ -120,7 +130,7 @@ CREATE TABLE LOS_GEDEDES.Estado(
 CREATE TABLE LOS_GEDEDES.Orden_Trabajo(
 	nroOrden INT IDENTITY(1,1),
 	patenteCamion NVARCHAR(255),
-	estado NVARCHAR(255),
+	estado INT,
 	fechaCarga NVARCHAR(255),/*Yo lo hubiera puesto como un DATETIME2 pero la columna era varchar*/
 	PRIMARY KEY (nroOrden),
 	FOREIGN KEY (patenteCamion) REFERENCES LOS_GEDEDES.Camion,
@@ -141,8 +151,11 @@ CREATE TABLE LOS_GEDEDES.Tarea_Orden(
 	--FOREIGN KEY (legajoMecanico) REFERENCES LOS_GEDEDES.Mecanico, /*Esta esta comentada porque no esta la tabla mecanico*/
 	CHECK(fechaInicioPlani < fechaFin AND fechaInicioReal < fechaFin)
 );
----------------------------------------------------------------------------------------
+
+---------------------------- PROCEDURES DE MIGRACION --------------------------
+
 -- PROCEDURE CHOFER --
+
 IF EXISTS (SELECT * FROM sys.objects WHERE name = 'cargarTablaChofer')
     DROP PROCEDURE LOS_GEDEDES.cargarTablaChofer
 
@@ -248,11 +261,76 @@ END
 
 /*No se bien como hacer la tabla intermedia, aparte que me falta lña tabla de tareas*/
 
+
+-- PROCEDURE CAMION --
+
+IF EXISTS (SELECT * FROM sys.objects WHERE name = 'cargarTablaCamion')
+	DROP PROCEDURE LOS_GEDEDES.cargarTablaCamion
+
+CREATE PROCEDURE LOS_GEDEDES.cargarTablaCamion
+AS
+BEGIN
+	BEGIN TRY
+		BEGIN TRANSACTION
+
+		/*	INSERT INTO LOS_GEDEDES.Camion (patente, nroChasis, nroMotor, fechaAlta, codigoMarca)
+			SELECT CAMION_PATENTE, CAMION_NRO_CHASIS, CAMION_NRO_MOTOR, CAMION_FECHA_ALTA, m.codigoMarca    -PARA CUANDO ESTE LA MARCA
+			FROM gd_esquema.Maestra JOIN LOS_GEDEDES.Marca m ON( m.nombre = MARCA_CAMION_MARCA) --*/
+
+			INSERT INTO LOS_GEDEDES.Camion (patente, nroChasis, nroMotor, fechaAlta)
+			SELECT DISTINCT CAMION_PATENTE, CAMION_NRO_CHASIS, CAMION_NRO_MOTOR, CAMION_FECHA_ALTA
+			FROM gd_esquema.Maestra 
+
+		COMMIT TRANSACTION
+	END TRY
+
+	BEGIN CATCH
+		ROLLBACK TRANSACTION;
+		DECLARE @errorDescripcion VARCHAR(255)
+		SELECT @errorDescripcion = ERROR_MESSAGE() + ' Error en el insert de la tabla Camion';
+        THROW 50000, @errorDescripcion, 1
+	END CATCH
+END
+
+
+-- PROCEDURE CIUDAD --
+
+IF EXISTS (SELECT * FROM sys.objects WHERE name = 'cargarTablaCiudad')
+	DROP PROCEDURE LOS_GEDEDES.cargarTablaCiudad
+
+CREATE PROCEDURE LOS_GEDEDES.cargarTablaCiudad
+AS
+BEGIN
+	BEGIN TRY
+		BEGIN TRANSACTION
+
+			INSERT INTO LOS_GEDEDES.Ciudad (nombre)
+			SELECT DISTINCT RECORRIDO_CIUDAD_ORIGEN
+			FROM gd_esquema.Maestra 
+			UNION
+			SELECT DISTINCT RECORRIDO_CIUDAD_DESTINO
+			FROM gd_esquema.Maestra
+			ORDER BY 1 DESC
+
+		COMMIT TRANSACTION
+	END TRY
+
+	BEGIN CATCH
+		ROLLBACK TRANSACTION;
+		DECLARE @errorDescripcion VARCHAR(255)
+		SELECT @errorDescripcion = ERROR_MESSAGE() + ' Error en el insert de la tabla Ciudad';
+        THROW 50000, @errorDescripcion, 1
+	END CATCH
+END
+
+
 -- EXECUTES --
 
 EXEC LOS_GEDEDES.cargarTablaChofer
 EXEC LOS_GEDEDES.cargarTablaOrden_Trabajo
 EXEC LOS_GEDEDES.cargarTablaEstado
+EXEC LOS_GEDEDES.cargarTablaCamion
+EXEC LOS_GEDEDES.cargarTablaCiudad
 
 
 
