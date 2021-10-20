@@ -7,11 +7,9 @@ GO
 /*Me fijo si existe el esquema en la tabla del sistema si no existe lo creo.
 --------------------------------------------------------------------------
 Me fijo primero si existe el elemento en la tabla, si la tabla ya existe la dropea para despues poder correr el create.  (ANTES DE CADA CREADO IRIA)
-
 IF EXISTS (select * from sys.objects where object_id = OBJECT_ID(N'[NOMBRE_ESQUEMA_TP].TABLA') and type = 'U')
 	DROP TABLE [NOMBRE_ESQUEMA_TP].TABLA
 	GO
-
 -- CREACION DE TABLAS 
 -- CREACION DE INDICES
 -- CREACION DE VISTAS
@@ -20,9 +18,7 @@ IF EXISTS (select * from sys.objects where object_id = OBJECT_ID(N'[NOMBRE_ESQUE
 -- CREACION DE TRIGGERS
 -- LLENADO DE TABLAS / EXEC DE SP (UNO POR TABLA)
 -- CREACION DE INDICES
-
 GO
-
 TENER EN CUENTA
 	1. DEPENDENCIAS 
 	2. PERFORMANCE (TIEMPO MAXIMO DE LA CREACION 5 MINUTOS)
@@ -158,7 +154,9 @@ CREATE TABLE LOS_GEDEDES.Tarea_Orden(
 
 IF EXISTS (SELECT * FROM sys.objects WHERE name = 'cargarTablaChofer')
     DROP PROCEDURE LOS_GEDEDES.cargarTablaChofer
+GO
 
+/*
 CREATE PROCEDURE LOS_GEDEDES.cargarTablaChofer
 AS
 BEGIN
@@ -166,7 +164,7 @@ BEGIN
         BEGIN TRANSACTION
 
             INSERT INTO LOS_GEDEDES.Chofer (nroLegajo,nombre,apellido,dni,direccion,telefono,mail,fecha_nac,costo_hora)
-            SELECT DISTINCT CHOFER_NRO_LEGAJO, CHOFER_NOMBRE, CHOFER_APELLIDO, CHOFER_DNI, CHOFER_DIRECCION, CHOFER_TELEFONO, CHOFER_MAIL, CHOFER_FECHA_NAC, CHOFFER_COSTO_HORA 
+            SELECT DISTINCT CHOFER_NRO_LEGAJO, CHOFER_NOMBRE, CHOFER_APELLIDO, CHOFER_DNI, CHOFER_DIRECCION, CHOFER_TELEFONO, CHOFER_MAIL, CHOFER_FECHA_NAC, CHOFER_COSTO_HORA 
             FROM gd_esquema.Maestra 
 
         COMMIT TRANSACTION
@@ -179,11 +177,13 @@ BEGIN
         THROW 50000, @errorDescripcion, 1
     END CATCH
 END
+GO
 
 -- PROCEDURE ORDEN TRABAJO --
 
 IF EXISTS (SELECT * FROM sys.objects WHERE name = 'cargarTablaOrdenTrabajo')
     DROP PROCEDURE LOS_GEDEDES.cargarTablaOrdenTrabajo
+GO
 
 CREATE PROCEDURE LOS_GEDEDES.cargarTablaOrdenTrabajo
 AS
@@ -191,8 +191,8 @@ BEGIN
     BEGIN TRY
         BEGIN TRANSACTION
 
-            INSERT INTO LOS_GEDEDES.OrdenTrabajo (patenteCamion,/*estado,*/fechaCarga)
-            SELECT DISTINCT CAMION_PATENTE, /*ORDEN_TRABAJO_ESTADO*/, ORDEN_TRABAJO_FECHA
+            INSERT INTO LOS_GEDEDES.Orden_Trabajo (patenteCamion,estado,fechaCarga)
+            SELECT DISTINCT CAMION_PATENTE, ORDEN_TRABAJO_ESTADO ORDEN_TRABAJO_FECHA
             FROM gd_esquema.Maestra 
 
         COMMIT TRANSACTION
@@ -205,11 +205,15 @@ BEGIN
         THROW 50000, @errorDescripcion, 1
     END CATCH
 END
+GO 
+--*/
+
 
 -- PROCEDURE ESTADO --
 
 IF EXISTS (SELECT * FROM sys.objects WHERE name = 'cargarTablaEstado')
     DROP PROCEDURE LOS_GEDEDES.cargarTablaEstado
+GO
 
 CREATE PROCEDURE LOS_GEDEDES.cargarTablaEstado
 AS
@@ -231,25 +235,22 @@ BEGIN
         THROW 50000, @errorDescripcion, 1
     END CATCH
 END
+GO
 
 -- PROCEDURE TAREA ORDEN --
 /*
 IF EXISTS (SELECT * FROM sys.objects WHERE name = 'cargarTablaTareaOrden')
     DROP PROCEDURE LOS_GEDEDES.cargarTablaTareaOrden
-
 CREATE PROCEDURE LOS_GEDEDES.cargarTablaTareaOrden
 AS
 BEGIN
     BEGIN TRY
         BEGIN TRANSACTION
-
             INSERT INTO LOS_GEDEDES.TareaOrden ()
             SELECT DISTINCT 
             FROM gd_esquema.Maestra 
-
         COMMIT TRANSACTION
     END TRY
-
     BEGIN CATCH
         ROLLBACK TRANSACTION;
         DECLARE @errorDescripcion VARCHAR(255)
@@ -266,6 +267,7 @@ END
 
 IF EXISTS (SELECT * FROM sys.objects WHERE name = 'cargarTablaCamion')
 	DROP PROCEDURE LOS_GEDEDES.cargarTablaCamion
+GO
 
 CREATE PROCEDURE LOS_GEDEDES.cargarTablaCamion
 AS
@@ -291,12 +293,14 @@ BEGIN
         THROW 50000, @errorDescripcion, 1
 	END CATCH
 END
+GO
 
 
 -- PROCEDURE CIUDAD --
 
 IF EXISTS (SELECT * FROM sys.objects WHERE name = 'cargarTablaCiudad')
 	DROP PROCEDURE LOS_GEDEDES.cargarTablaCiudad
+GO
 
 CREATE PROCEDURE LOS_GEDEDES.cargarTablaCiudad
 AS
@@ -322,15 +326,15 @@ BEGIN
         THROW 50000, @errorDescripcion, 1
 	END CATCH
 END
+GO
 
 
 -- EXECUTES --
 
-EXEC LOS_GEDEDES.cargarTablaChofer
-EXEC LOS_GEDEDES.cargarTablaOrden_Trabajo
+--EXEC LOS_GEDEDES.cargarTablaChofer
+--EXEC LOS_GEDEDES.cargarTablaOrdenTrabajo
 EXEC LOS_GEDEDES.cargarTablaEstado
 EXEC LOS_GEDEDES.cargarTablaCamion
 EXEC LOS_GEDEDES.cargarTablaCiudad
-
 
 
