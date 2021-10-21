@@ -54,7 +54,32 @@ IF EXISTS (select * from sys.objects where object_id = OBJECT_ID('LOS_GEDEDES.Ch
 IF EXISTS (select * from sys.objects where object_id = OBJECT_ID('LOS_GEDEDES.Camion') and type = 'U')
 	DROP TABLE LOS_GEDEDES.Camion
 
+IF EXISTS (select * from sys.objects where object_id = OBJECT_ID('LOS_GEDEDES.Marca') and type = 'U')
+	DROP TABLE LOS_GEDEDES.Marca
+
+IF EXISTS (select * from sys.objects where object_id = OBJECT_ID('LOS_GEDEDES.Modelo') and type = 'U')
+	DROP TABLE LOS_GEDEDES.Modelo
+
+IF EXISTS (select * from sys.objects where object_id = OBJECT_ID('LOS_GEDEDES.Tipo_paquete') and type = 'U')
+	DROP TABLE LOS_GEDEDES.Tipo_paquete
+
+IF EXISTS (select * from sys.objects where object_id = OBJECT_ID('LOS_GEDEDES.Paquete_viaje') and type = 'U')
+	DROP TABLE LOS_GEDEDES.Paquete_viaje
+
 ------------ CREACION DE TABLAS ----------------
+
+CREATE TABLE LOS_GEDEDES.Marca(
+	PRIMARY KEY (id),
+	marca NVARCHAR(255),
+);
+
+CREATE TABLE LOS_GEDEDES.Modelo(
+	velocidadMaxima INT,
+	capacidadTanque INT,
+	capacidadCarga INT,
+	PRIMARY KEY (id),
+	FOREIGN KEY (codigoMarca) REFERENCES LOS_GEDEDES.Marca	
+);
 
 CREATE TABLE LOS_GEDEDES.Camion(
 patente NVARCHAR(255),
@@ -63,7 +88,7 @@ nroMotor NVARCHAR(255),
 fechaAlta DATETIME2(3),
 --codigoMarca INT,
 PRIMARY KEY (patente),
---FOREIGN KEY (codigoMarca) REFERENCES LOS_GEDEDES.Marca
+FOREIGN KEY (codigoMarca) REFERENCES LOS_GEDEDES.Marca
 );
 
 
@@ -115,6 +140,23 @@ FOREIGN KEY (recorrido) REFERENCES LOS_GEDEDES.Recorrido,
 CHECK(fechaInicio < fechaFin)
 );
 
+CREATE TABLE LOS_GEDEDES.Tipo_Paquete(
+	tipo  NVARCHAR(10),
+	largoMax INT,
+	precioBase DECIMAL(18,2),
+	pesoMax INT,
+	altoMax INT,
+	PRIMARY KEY (tipo),
+)
+
+CREATE TABLE LOS_GEDEDES.Paquete_viaje(
+	id INT,
+	cantidad INT,
+	precioFinalPaquete DECIMAL (18,2),
+	PRIMARY KEY (id),
+	FOREIGN KEY (nroViaje) REFERENCES LOS_GEDEDES.Viaje,
+	FOREIGN KEY (tipo) REFERENCES LOS_GEDEDES.Tipo_Paquete,
+)
 
 CREATE TABLE LOS_GEDEDES.Estado(
 	codigo INT IDENTITY(1,1),
