@@ -85,7 +85,7 @@ IF EXISTS (select * from sys.objects where object_id = OBJECT_ID('LOS_GEDEDES.Ma
 ------------ CREACION DE TABLAS ----------------
 
 CREATE TABLE LOS_GEDEDES.Marca(
-	codigo	INT,
+	codigo	INT IDENTITY(1,1),
 	nombre	NVARCHAR(255),
 	PRIMARY KEY (codigo)
 );
@@ -115,7 +115,7 @@ CREATE TABLE LOS_GEDEDES.Chofer(
 nroLegajo	INT,
 nombre		NVARCHAR(255),
 apellido	NVARCHAR(255),
-dni			DECIMAL(18,0),
+dni		DECIMAL(18,0),
 direccion	NVARCHAR(255),
 telefono	INT,
 mail		NVARCHAR(255),
@@ -127,7 +127,7 @@ PRIMARY KEY (nroLegajo)
 
 CREATE TABLE LOS_GEDEDES.Ciudad(
 codigoCiudad	INT IDENTITY(1,1),
-nombre			NVARCHAR(255)
+nombre		NVARCHAR(255)
 PRIMARY KEY (codigoCiudad)
 );
 
@@ -137,20 +137,20 @@ nroRecorrido	INT IDENTITY(1,1),
 precioRecorrido	DECIMAL(18,2),
 ciudadOrigen	INT,
 ciudadDestino	INT,
-recorridoKM		INT,
+recorridoKM	INT,
 PRIMARY KEY (nroRecorrido),
 FOREIGN KEY (ciudadOrigen) REFERENCES LOS_GEDEDES.Ciudad,
 FOREIGN KEY (ciudadDestino) REFERENCES LOS_GEDEDES.Ciudad
 );
 
 CREATE TABLE LOS_GEDEDES.Viaje(
-nroViaje		INT IDENTITY(1,1),
+nroViaje	INT IDENTITY(1,1),
 patenteCamion	NVARCHAR(255),
 choferLegajo	INT,
-recorrido		INT,
+recorrido	INT,
 precioRecorrido INT,
-fechaInicio		DATETIME2(7),
-fechaFin		DATETIME2(3),
+fechaInicio	DATETIME2(7),
+fechaFin	DATETIME2(3),
 naftaConsumida	DECIMAL(18,2),
 PRIMARY KEY (nroViaje),
 FOREIGN KEY (patenteCamion) REFERENCES LOS_GEDEDES.Camion,
@@ -198,7 +198,7 @@ CREATE TABLE LOS_GEDEDES.Orden_Trabajo(
 
 
 CREATE TABLE LOS_GEDEDES.taller(
-id			INT IDENTITY(1,1),
+id		INT IDENTITY(1,1),
 nombre		NVARCHAR(255),
 direccion	NVARCHAR(255),
 telefono	DECIMAL(18,0),
@@ -298,6 +298,37 @@ BEGIN
 	END CATCH
 END
 GO
+
+
+-- PROCEDURE RECORRIDO
+
+IF EXISTS (SELECT * FROM sys.objects WHERE name = 'cargarTablaRecorrido')
+	DROP PROCEDURE LOS_GEDEDES.cargarTablaRecorrido
+GO
+
+CREATE PROCEDURE LOS_GEDEDES.cargarTablaRecorrido
+AS
+BEGIN
+	BEGIN TRY
+		BEGIN TRANSACTION
+
+			INSERT INTO LOS_GEDEDES.Recorrido (precioRecorrido, ciudadOrigen, ciudadDestino, recorridoKM)
+			SELECT DISTINCT RECORRIDO_PRECIO, origen.codigoCiudad , destino.codigoCiudad, RECORRIDO_KM
+			FROM gd_esquema.Maestra gd JOIN LOS_GEDEDES.Ciudad origen ON(origen.nombre = RECORRIDO_CIUDAD_ORIGEN)
+						   JOIN LOS_GEDEDES.Ciudad destino ON(destino.nombre = RECORRIDO_CIUDAD_DESTINO)
+
+		COMMIT TRANSACTION
+	END TRY
+
+	BEGIN CATCH
+		ROLLBACK TRANSACTION;
+		DECLARE @errorDescripcion VARCHAR(255)
+		SELECT @errorDescripcion = ERROR_MESSAGE() + ' Error en el insert de la tabla Recorrido';
+        THROW 50000, @errorDescripcion, 1
+	END CATCH
+END
+GO
+
 
 -- PROCEDURE ESTADO --
 
@@ -477,6 +508,36 @@ BEGIN
 END
 GO
 
+
+-- PROCEDURE MARCA --
+
+IF EXISTS (SELECT * FROM sys.objects WHERE name = 'cargarTablaMarca')
+	DROP PROCEDURE LOS_GEDEDES.cargarTablaMarca
+GO
+
+CREATE PROCEDURE LOS_GEDEDES.cargarTablaMarca
+AS
+BEGIN
+	BEGIN TRY
+		BEGIN TRANSACTION
+
+			INSERT INTO LOS_GEDEDES.Marca (nombre)
+			SELECT DISTINCT MARCA_CAMION_MARCA
+			FROM gd_esquema.Maestra gd 
+
+		COMMIT TRANSACTION
+	END TRY
+
+	BEGIN CATCH
+		ROLLBACK TRANSACTION;
+		DECLARE @errorDescripcion VARCHAR(255)
+		SELECT @errorDescripcion = ERROR_MESSAGE() + ' Error en el insert de la tabla Marca';
+        THROW 50000, @errorDescripcion, 1
+	END CATCH
+END
+GO
+
+
 -- PROCEDURE CAMION --
 
 IF EXISTS (SELECT * FROM sys.objects WHERE name = 'cargarTablaCamion')
@@ -489,17 +550,9 @@ BEGIN
 	BEGIN TRY
 		BEGIN TRANSACTION
 
-			/*
 			INSERT INTO LOS_GEDEDES.Camion (patente, nroChasis, nroMotor, fechaAlta, codigoMarca)
 			SELECT DISTINCT CAMION_PATENTE, CAMION_NRO_CHASIS, CAMION_NRO_MOTOR, CAMION_FECHA_ALTA, m.codigo
-			FROM gd_esquema.Maestra JOIN LOS_GEDEDES.Marca m ON( m.nombre = MARCA_CAMION_MARCA)
-			WHERE CAMION_PATENTE IS NOT NULL
-			*/
-
-			INSERT INTO LOS_GEDEDES.Camion (patente, nroChasis, nroMotor, fechaAlta)
-			SELECT DISTINCT CAMION_PATENTE, CAMION_NRO_CHASIS, CAMION_NRO_MOTOR, CAMION_FECHA_ALTA
-			FROM gd_esquema.Maestra
-			WHERE CAMION_PATENTE IS NOT NULL
+			FROM gd_esquema.Maestra gd JOIN LOS_GEDEDES.Marca m ON( m.nombre = MARCA_CAMION_MARCA) 
 
 		COMMIT TRANSACTION
 	END TRY
@@ -512,6 +565,7 @@ BEGIN
 	END CATCH
 END
 GO
+
 
 -- PROCEDURE ORDEN TRABAJO --
 
@@ -602,11 +656,43 @@ END
 GO
 */
 
+/*
+-- PROCEDURE VIAJE --
+
+IF EXISTS (SELECT * FROM sys.objects WHERE name = 'cargarTablaViaje')
+	DROP PROCEDURE LOS_GEDEDES.cargarTablaViaje
+GO
+
+CREATE PROCEDURE LOS_GEDEDES.cargarTablaViaje
+AS
+BEGIN
+	BEGIN TRY
+		BEGIN TRANSACTION
+
+			INSERT INTO LOS_GEDEDES.Viaje (patenteCamion, choferLegajo, recorrido, precioRecorrido, fechaInicio, fechaFin, naftaConsumida)
+			SELECT DISTINCT CAMION_PATENTE, CHOFER_NRO_LEGAJO, nroRecorrido, precioRecorrido, VIAJE_FECHA_INICIO, VIAJE_FECHA_FIN, VIAJE_CONSUMO_COMBUSTIBLE
+			FROM gd_esquema.Maestra gd JOIN LOS_GEDEDES.Recorrido r ON( gd.RECORRIDO_PRECIO = r.precioRecorrido AND gd.RECORRIDO_KM = r.recorridoKM)
+
+		COMMIT TRANSACTION
+	END TRY
+
+	BEGIN CATCH
+		ROLLBACK TRANSACTION;
+		DECLARE @errorDescripcion VARCHAR(255)
+		SELECT @errorDescripcion = ERROR_MESSAGE() + ' Error en el insert de la tabla Viaje';
+        THROW 50000, @errorDescripcion, 1
+	END CATCH
+END
+GO
+--*/
+
 -- EXECUTES --
 
 --EXEC LOS_GEDEDES.cargarTablaChofer
 --EXEC LOS_GEDEDES.cargarTablaOrdenTrabajo
 EXEC LOS_GEDEDES.cargarTablaCiudad
+EXEC LOS_GEDEDES.cargarTablaRecorrido
+EXEC LOS_GEDEDES.cargarTablaMarca
 EXEC LOS_GEDEDES.cargarTablaEstado
 EXEC LOS_GEDEDES.cargarTablaMaterial
 EXEC LOS_GEDEDES.cargarTablaTarea
@@ -616,6 +702,8 @@ EXEC LOS_GEDEDES.cargarTablaMecanico
 EXEC LOS_GEDEDES.cargarTablaCamion
 EXEC LOS_GEDEDES.cargarTablaOrdenTrabajo
 EXEC LOS_GEDEDES.cargarTablaTareaOrden
+--EXEC LOS_GEDEDES.cargarTablaViaje
+
 
 
 /*
@@ -625,5 +713,3 @@ SELECT * FROM LOS_GEDEDES.tarea
 SELECT * FROM LOS_GEDEDES.material
 SELECT * FROM LOS_GEDEDES.material_tarea
 */
-
-
