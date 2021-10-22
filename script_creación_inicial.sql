@@ -85,19 +85,19 @@ IF EXISTS (select * from sys.objects where object_id = OBJECT_ID('LOS_GEDEDES.Ma
 ------------ CREACION DE TABLAS ----------------
 
 CREATE TABLE LOS_GEDEDES.Marca(
-	codigo	INT IDENTITY(1,1),
-	nombre	NVARCHAR(255),
-	PRIMARY KEY (codigo)
+codigo		INT IDENTITY(1,1),
+nombre		NVARCHAR(255),
+PRIMARY KEY (codigo)
 );
 
 CREATE TABLE LOS_GEDEDES.Modelo(
-	codigo			INT,
-	velocidadMaxima INT,
-	capacidadTanque INT,
-	capacidadCarga	INT,
-	codigoMarca		INT,
-	PRIMARY KEY (codigo),
-	FOREIGN KEY (codigoMarca) REFERENCES LOS_GEDEDES.Marca	
+codigo			INT,
+velocidadMaxima 	INT,
+capacidadTanque 	INT,
+capacidadCarga		INT,
+codigoMarca		INT,
+PRIMARY KEY (codigo),
+FOREIGN KEY (codigoMarca) REFERENCES LOS_GEDEDES.Marca	
 );
 
 CREATE TABLE LOS_GEDEDES.Camion(
@@ -119,7 +119,7 @@ dni		DECIMAL(18,0),
 direccion	NVARCHAR(255),
 telefono	INT,
 mail		NVARCHAR(255),
-fecha_nac	INT,
+fecha_nac	DATETIME2(3),
 costo_hora	INT,
 PRIMARY KEY (nroLegajo)
 );
@@ -160,40 +160,40 @@ CHECK(fechaInicio < fechaFin)
 );
 
 CREATE TABLE LOS_GEDEDES.Tipo_Paquete(
-	tipo		NVARCHAR(10),
-	largoMax	INT,
-	precioBase	DECIMAL(18,2),
-	pesoMax		INT,
-	altoMax		INT,
-	PRIMARY KEY (tipo),
+tipo		NVARCHAR(10),
+largoMax	INT,
+precioBase	DECIMAL(18,2),
+pesoMax		INT,
+altoMax		INT,
+PRIMARY KEY (tipo),
 )
 
 CREATE TABLE LOS_GEDEDES.Paquete_viaje(
-	id					INT,
-	cantidad			INT,
-	precioFinalPaquete	DECIMAL (18,2),
-	nroViaje			INT,
-	tipo				NVARCHAR(10),
-	PRIMARY KEY (id),
-	FOREIGN KEY (nroViaje) REFERENCES LOS_GEDEDES.Viaje,
-	FOREIGN KEY (tipo) REFERENCES LOS_GEDEDES.Tipo_Paquete,
+id			INT,
+cantidad		INT,
+precioFinalPaquete	DECIMAL (18,2),
+nroViaje		INT,
+tipo			NVARCHAR(10),
+PRIMARY KEY (id),
+FOREIGN KEY (nroViaje) REFERENCES LOS_GEDEDES.Viaje,
+FOREIGN KEY (tipo) REFERENCES LOS_GEDEDES.Tipo_Paquete,
 )
 
 CREATE TABLE LOS_GEDEDES.Estado(
-	codigo		INT IDENTITY(1,1),
-	descripcion NVARCHAR(255),
-	PRIMARY KEY (codigo)
+codigo		INT IDENTITY(1,1),
+descripcion 	NVARCHAR(255),
+PRIMARY KEY (codigo)
 );
 
 
 CREATE TABLE LOS_GEDEDES.Orden_Trabajo(
-	nroOrden		INT IDENTITY(1,1),
-	patenteCamion	NVARCHAR(255),
-	estado			INT,
-	fechaCarga		NVARCHAR(255),/*Yo lo hubiera puesto como un DATETIME2 pero la columna era varchar*/
-	PRIMARY KEY (nroOrden),
-	FOREIGN KEY (patenteCamion) REFERENCES LOS_GEDEDES.Camion,
-	FOREIGN KEY (estado) REFERENCES LOS_GEDEDES.Estado
+nroOrden		INT IDENTITY(1,1),
+patenteCamion		NVARCHAR(255),
+estado			INT,
+fechaCarga		NVARCHAR(255),
+PRIMARY KEY (nroOrden),
+FOREIGN KEY (patenteCamion) REFERENCES LOS_GEDEDES.Camion,
+FOREIGN KEY (estado) REFERENCES LOS_GEDEDES.Estado
 );
 
 
@@ -205,14 +205,14 @@ telefono	DECIMAL(18,0),
 mail		NVARCHAR(255),
 codCiudad	INT,
 PRIMARY KEY (id),
-FOREIGN KEY	(codCiudad) REFERENCES LOS_GEDEDES.ciudad
+FOREIGN KEY (codCiudad) REFERENCES LOS_GEDEDES.ciudad
 )
  
 CREATE TABLE LOS_GEDEDES.mecanico(
 nroLegajo	INT,
 nombre		NVARCHAR(255),
 apellido	NVARCHAR(255),
-dni			DECIMAL(18,0),
+dni		DECIMAL(18,0),
 direccion	NVARCHAR(255),
 telefono	INT,
 mail		NVARCHAR(255),
@@ -227,23 +227,23 @@ FOREIGN KEY	(idTaller) REFERENCES LOS_GEDEDES.taller
 CREATE TABLE LOS_GEDEDES.tarea(
 codigo			INT,
 descripcion		NVARCHAR(255),
-tiempoEstimado	INT,
+tiempoEstimado		INT,
 tipo			NVARCHAR(255),
 PRIMARY KEY (codigo)
 )
 
 
 CREATE TABLE LOS_GEDEDES.tarea_orden(
-nroOrden				INT,
-codTarea				INT,
+nroOrden			INT,
+codTarea			INT,
 legajoMecanico			INT,
-fechaInicioPlanificada	DATETIME2(3),
-fechaInicio				DATETIME2(3),
-fechaFin				DATETIME2(3),
+fechaInicioPlanificada		DATETIME2(3),
+fechaInicio			DATETIME2(3),
+fechaFin			DATETIME2(3),
 PRIMARY KEY (nroOrden, codTarea),
-FOREIGN KEY	(nroOrden) REFERENCES LOS_GEDEDES.Orden_Trabajo,
-FOREIGN KEY	(codTarea) REFERENCES LOS_GEDEDES.tarea,
-FOREIGN KEY	(legajoMecanico) REFERENCES LOS_GEDEDES.mecanico,
+FOREIGN KEY (nroOrden) REFERENCES LOS_GEDEDES.Orden_Trabajo,
+FOREIGN KEY (codTarea) REFERENCES LOS_GEDEDES.tarea,
+FOREIGN KEY (legajoMecanico) REFERENCES LOS_GEDEDES.mecanico,
 CHECK(fechaInicioPlanificada < fechaFin AND fechaInicio < fechaFin)
 )
 
@@ -261,8 +261,8 @@ codTarea		INT,
 codMaterial		NVARCHAR(100),
 cantidad		INT,
 PRIMARY KEY (codMaterial, codTarea),
-FOREIGN KEY	(codMaterial) REFERENCES LOS_GEDEDES.material,
-FOREIGN KEY	(codTarea) REFERENCES LOS_GEDEDES.tarea
+FOREIGN KEY (codMaterial) REFERENCES LOS_GEDEDES.material,
+FOREIGN KEY (codTarea) REFERENCES LOS_GEDEDES.tarea
 )
 
 ---------------------------- PROCEDURES DE MIGRACION --------------------------
@@ -635,15 +635,20 @@ IF EXISTS (SELECT * FROM sys.objects WHERE name = 'cargarTablaChofer')
     DROP PROCEDURE LOS_GEDEDES.cargarTablaChofer
 GO
 
-/*
+IF EXISTS (SELECT * FROM sys.objects WHERE name = 'cargarTablaChofer')
+    DROP PROCEDURE LOS_GEDEDES.cargarTablaChofer
+GO
+
 CREATE PROCEDURE LOS_GEDEDES.cargarTablaChofer
 AS
 BEGIN
     BEGIN TRY
         BEGIN TRANSACTION
             INSERT INTO LOS_GEDEDES.Chofer (nroLegajo,nombre,apellido,dni,direccion,telefono,mail,fecha_nac,costo_hora)
-            SELECT DISTINCT CHOFER_NRO_LEGAJO, CHOFER_NOMBRE, CHOFER_APELLIDO, CHOFER_DNI, CHOFER_DIRECCION, CHOFER_TELEFONO, CHOFER_MAIL, CHOFER_FECHA_NAC, CHOFER_COSTO_HORA 
+            SELECT DISTINCT CHOFER_NRO_LEGAJO, CHOFER_NOMBRE, CHOFER_APELLIDO, CHOFER_DNI, CHOFER_DIRECCION, CHOFER_TELEFONO,
+			CHOFER_MAIL, CHOFER_FECHA_NAC, CHOFER_COSTO_HORA 
             FROM gd_esquema.Maestra 
+	    WHERE CHOFER_NRO_LEGAJO IS NOT NULL
         COMMIT TRANSACTION
     END TRY
     BEGIN CATCH
@@ -654,9 +659,8 @@ BEGIN
     END CATCH
 END
 GO
-*/
 
-/*
+
 -- PROCEDURE VIAJE --
 
 IF EXISTS (SELECT * FROM sys.objects WHERE name = 'cargarTablaViaje')
@@ -684,12 +688,12 @@ BEGIN
 	END CATCH
 END
 GO
---*/
+
 
 -- EXECUTES --
 
---EXEC LOS_GEDEDES.cargarTablaChofer
---EXEC LOS_GEDEDES.cargarTablaOrdenTrabajo
+EXEC LOS_GEDEDES.cargarTablaChofer
+EXEC LOS_GEDEDES.cargarTablaOrdenTrabajo
 EXEC LOS_GEDEDES.cargarTablaCiudad
 EXEC LOS_GEDEDES.cargarTablaRecorrido
 EXEC LOS_GEDEDES.cargarTablaMarca
@@ -702,7 +706,7 @@ EXEC LOS_GEDEDES.cargarTablaMecanico
 EXEC LOS_GEDEDES.cargarTablaCamion
 EXEC LOS_GEDEDES.cargarTablaOrdenTrabajo
 EXEC LOS_GEDEDES.cargarTablaTareaOrden
---EXEC LOS_GEDEDES.cargarTablaViaje
+EXEC LOS_GEDEDES.cargarTablaViaje
 
 
 
@@ -712,4 +716,33 @@ SELECT * FROM LOS_GEDEDES.mecanico
 SELECT * FROM LOS_GEDEDES.tarea
 SELECT * FROM LOS_GEDEDES.material
 SELECT * FROM LOS_GEDEDES.material_tarea
+*/
+
+/*
+Orden de creacion/insert de las tablas:
+1.Ciudad
+2.Estado
+3.Material
+4.Tipo_Tarea
+5.Marca
+6.Modelo
+7.Tipo_Paquete
+8.Material_Tarea
+9.Tarea
+10.Taller
+11.Mecanico
+12.Camion
+13.Orden_Trabajo
+14.Tarea_Orden
+15.Recorrido
+16.Chofer
+17.Viaje
+18.Paquete_Viaje
+Del 1 al 7 son intercambiables
+
+
+Posible orden para eliminar las tablas:
+material_tarea, material, tarea_orden, tarea, mecanico, taller, orden_trabajo, estado, 
+paquete_viaje, tipo_paquete, viaje, recorrido, ciudad, chofer, camion, modelo, marca
+
 */
