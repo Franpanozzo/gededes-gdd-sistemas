@@ -91,7 +91,8 @@ PRIMARY KEY (codigo)
 );
 
 CREATE TABLE LOS_GEDEDES.Modelo(
-codigo			INT,
+codigo			INT IDENTITY(1,1),
+modelo			NVARCHAR(255),
 velocidadMaxima 	INT,
 capacidadTanque 	INT,
 capacidadCarga		INT,
@@ -160,23 +161,24 @@ CHECK(fechaInicio < fechaFin)
 );
 
 CREATE TABLE LOS_GEDEDES.Tipo_Paquete(
-tipo		NVARCHAR(10),
-largoMax	INT,
+nroPaquete INT IDENTITY (1,1),
+tipo		NVARCHAR(255),
+largoMax	DECIMAL(18,2),
 precioBase	DECIMAL(18,2),
-pesoMax		INT,
-altoMax		INT,
-PRIMARY KEY (tipo),
+pesoMax		DECIMAL(18,2),
+altoMax		DECIMAL(18,2),
+PRIMARY KEY (nroPaquete),
 )
 
 CREATE TABLE LOS_GEDEDES.Paquete_viaje(
-id			INT,
+id			INT IDENTITY (1,1),
 cantidad		INT,
 precioFinalPaquete	DECIMAL (18,2),
 nroViaje		INT,
-tipo			NVARCHAR(10),
+nroPaquete		INT,
 PRIMARY KEY (id),
 FOREIGN KEY (nroViaje) REFERENCES LOS_GEDEDES.Viaje,
-FOREIGN KEY (tipo) REFERENCES LOS_GEDEDES.Tipo_Paquete,
+FOREIGN KEY (nroPaquete) REFERENCES LOS_GEDEDES.Tipo_Paquete,
 )
 
 CREATE TABLE LOS_GEDEDES.Estado(
@@ -234,13 +236,14 @@ PRIMARY KEY (codigo)
 
 
 CREATE TABLE LOS_GEDEDES.tarea_orden(
+idTareaOrden INT IDENTITY (1,1),
 nroOrden			INT,
 codTarea			INT,
 legajoMecanico			INT,
 fechaInicioPlanificada		DATETIME2(3),
 fechaInicio			DATETIME2(3),
 fechaFin			DATETIME2(3),
-PRIMARY KEY (nroOrden, codTarea),
+PRIMARY KEY (idTareaOrden,nroOrden, codTarea),
 FOREIGN KEY (nroOrden) REFERENCES LOS_GEDEDES.Orden_Trabajo,
 FOREIGN KEY (codTarea) REFERENCES LOS_GEDEDES.tarea,
 FOREIGN KEY (legajoMecanico) REFERENCES LOS_GEDEDES.mecanico,
@@ -493,7 +496,7 @@ BEGIN
 			SELECT DISTINCT MECANICO_NRO_LEGAJO, MECANICO_NOMBRE, MECANICO_APELLIDO, MECANICO_DNI, 
 					MECANICO_DIRECCION, MECANICO_TELEFONO, MECANICO_MAIL, MECANICO_FECHA_NAC, 
 					MECANICO_COSTO_HORA, t.id 
-			FROM gd_esquema.Maestra JOIN taller t ON (TALLER_NOMBRE = t.nombre)
+			FROM gd_esquema.Maestra LEFT JOIN taller t ON (TALLER_NOMBRE = t.nombre)
 			WHERE MECANICO_NRO_LEGAJO IS NOT NULL
 		
 		COMMIT TRANSACTION
@@ -537,6 +540,62 @@ BEGIN
 END
 GO
 
+-- PROCEDURE MODELO --
+
+IF EXISTS (SELECT * FROM sys.objects WHERE name = 'cargarTablaModelo')
+	DROP PROCEDURE LOS_GEDEDES.cargarTablaModelo
+GO
+
+CREATE PROCEDURE LOS_GEDEDES.cargarTablaModelo
+AS
+BEGIN
+	BEGIN TRY
+		BEGIN TRANSACTION
+
+			INSERT INTO LOS_GEDEDES.Modelo (modelo, velocidadMaxima, capacidadTanque, capacidadCarga, codigoMarca)
+			SELECT DISTINCT MODELO_CAMION, MODELO_VELOCIDAD_MAX, MODELO_CAPACIDAD_TANQUE, MODELO_CAPACIDAD_CARGA, m.codigo
+			FROM gd_esquema.Maestra gd JOIN LOS_GEDEDES.Marca m ON(m.nombre = MARCA_CAMION_MARCA)
+
+		COMMIT TRANSACTION
+	END TRY
+
+	BEGIN CATCH
+		ROLLBACK TRANSACTION;
+		DECLARE @errorDescripcion VARCHAR(255)
+		SELECT @errorDescripcion = ERROR_MESSAGE() + ' Error en el insert de la tabla Modelo';
+        THROW 50000, @errorDescripcion, 1
+	END CATCH
+END
+GO
+
+-- PROCEDURE TIPO PAQUETE --
+
+IF EXISTS (SELECT * FROM sys.objects WHERE name = 'cargarTablaTipoPaquete')
+    DROP PROCEDURE LOS_GEDEDES.cargarTablaTipoPaquete
+GO
+
+CREATE PROCEDURE LOS_GEDEDES.cargarTablaTipoPaquete
+AS
+BEGIN
+    BEGIN TRY
+        BEGIN TRANSACTION
+
+            INSERT INTO LOS_GEDEDES.Tipo_Paquete (tipo, largoMax, precioBase, pesoMax, altoMax)
+            SELECT DISTINCT PAQUETE_DESCRIPCION, PAQUETE_LARGO_MAX, PAQUETE_PRECIO, PAQUETE_PESO_MAX, PAQUETE_ALTO_MAX
+            FROM gd_esquema.Maestra 
+			WHERE PAQUETE_DESCRIPCION IS NOT NULL
+
+        COMMIT TRANSACTION
+    END TRY
+
+    BEGIN CATCH
+        ROLLBACK TRANSACTION;
+        DECLARE @errorDescripcion VARCHAR(255)
+        SELECT @errorDescripcion = ERROR_MESSAGE() + ' Error en el insert de la tabla Tipo Pquete';
+        THROW 50000, @errorDescripcion, 1
+    END CATCH
+END
+GO
 
 -- PROCEDURE CAMION --
 
@@ -552,7 +611,7 @@ BEGIN
 
 			INSERT INTO LOS_GEDEDES.Camion (patente, nroChasis, nroMotor, fechaAlta, codigoMarca)
 			SELECT DISTINCT CAMION_PATENTE, CAMION_NRO_CHASIS, CAMION_NRO_MOTOR, CAMION_FECHA_ALTA, m.codigo
-			FROM gd_esquema.Maestra gd JOIN LOS_GEDEDES.Marca m ON( m.nombre = MARCA_CAMION_MARCA) 
+			FROM gd_esquema.Maestra gd JOIN LOS_GEDEDES.Marca m ON (m.nombre = MARCA_CAMION_MARCA) 
 
 		COMMIT TRANSACTION
 	END TRY
@@ -610,7 +669,7 @@ BEGIN
 
 			INSERT INTO LOS_GEDEDES.tarea_orden (nroOrden, codTarea, legajoMecanico, 
 				fechaInicioPlanificada, fechaInicio, fechaFin)
-			SELECT DISTINCT o.nroOrden, TAREA_CODIGO, CHOFER_NRO_LEGAJO, 
+			SELECT DISTINCT o.nroOrden, TAREA_CODIGO, MECANICO_NRO_LEGAJO, 
 				TAREA_FECHA_INICIO_PLANIFICADO, TAREA_FECHA_INICIO, TAREA_FECHA_FIN
 			FROM gd_esquema.Maestra m JOIN LOS_GEDEDES.Orden_Trabajo o ON 
 				(o.patenteCamion = m.CAMION_PATENTE AND o.fechaCarga = m.ORDEN_TRABAJO_FECHA)
@@ -693,10 +752,11 @@ GO
 -- EXECUTES --
 
 EXEC LOS_GEDEDES.cargarTablaChofer
-EXEC LOS_GEDEDES.cargarTablaOrdenTrabajo
 EXEC LOS_GEDEDES.cargarTablaCiudad
 EXEC LOS_GEDEDES.cargarTablaRecorrido
 EXEC LOS_GEDEDES.cargarTablaMarca
+EXEC LOS_GEDEDES.cargarTablaModelo
+EXEC LOS_GEDEDES.cargarTablaTipoPaquete
 EXEC LOS_GEDEDES.cargarTablaEstado
 EXEC LOS_GEDEDES.cargarTablaMaterial
 EXEC LOS_GEDEDES.cargarTablaTarea
@@ -707,7 +767,7 @@ EXEC LOS_GEDEDES.cargarTablaCamion
 EXEC LOS_GEDEDES.cargarTablaOrdenTrabajo
 EXEC LOS_GEDEDES.cargarTablaTareaOrden
 EXEC LOS_GEDEDES.cargarTablaViaje
-
+/*EXEC LOS_GEDEDES.cargarTablaPaqueteViaje*/
 
 
 /*
