@@ -30,6 +30,14 @@ IF EXISTS (select * from sys.objects where object_id = OBJECT_ID('LOS_GEDEDES.BI
 IF EXISTS (select * from sys.objects where object_id = OBJECT_ID('LOS_GEDEDES.BI_dimesion_OT') and type = 'U')
 	DROP TABLE LOS_GEDEDES.BI_dimension_OT
  
+IF EXISTS (select * from sys.objects where object_id = OBJECT_ID('LOS_GEDEDES.BI_dimension_marca') and type = 'U')
+	DROP TABLE LOS_GEDEDES.BI_marca
+
+IF EXISTS (select * from sys.objects where object_id = OBJECT_ID('LOS_GEDEDES.BI_dimension_modelo') and type = 'U')
+	DROP TABLE LOS_GEDEDES.BI_modelo
+
+IF EXISTS (select * from sys.objects where object_id = OBJECT_ID('LOS_GEDEDES.BI_dimesion_paquete') and type = 'U')
+	DROP TABLE LOS_GEDEDES.BI_dimension_paquete
   
 ------------ CREACION DE TABLAS ----------------
 
@@ -148,4 +156,25 @@ costo_hora	INT,
 PRIMARY KEY (nroLegajo),
 )
 
+CREATE TABLE LOS_GEDEDES.BI_dimension_marca(
+	codigo INT,
+	nombre NVARCHAR(255),
+	PRIMARY KEY (codigo),
+)
 
+CREATE TABLE LOS_GEDEDES.BI_dimension_modelo(
+	codigo INT,
+	modelo NVARCHAR(255),
+	PRIMARY KEY (codigo),
+)
+
+CREATE TABLE LOS_GEDEDES.BI_dimension_paquete(
+	nroPaquete INT,
+	largoMax DECIMAL(18,2),
+	pesoMax DECIMAL(18,2),
+	altoMax DECIMAL(18,2),
+	precioBase DECIMAL(18,2),
+	cantidad INT,
+	precioFinalPaquete DECIMAL(18,2),
+	PRIMARY KEY (nroPaquete),
+)
