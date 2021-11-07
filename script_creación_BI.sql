@@ -183,12 +183,12 @@ nroOrdenTrabajo 	INT,
 tiempo 				INT,
 idTaller			INT,
 PRIMARY KEY(patenteCamion, choferLegajo, codigoTarea,
-codigoMaterial, nroOrdenTrabajo, tiempo)
+codigoMaterial, nroOrdenTrabajo, tiempo, idTaller),
 FOREIGN KEY (patenteCamion) REFERENCES LOS_GEDEDES.BI_dimension_camion,
 FOREIGN KEY (choferLegajo) REFERENCES LOS_GEDEDES.BI_dimension_chofer,
 FOREIGN KEY (codigoTarea) REFERENCES LOS_GEDEDES.BI_dimension_tarea,
 FOREIGN KEY (codigoMaterial) REFERENCES LOS_GEDEDES.BI_dimension_material,
 FOREIGN KEY (nroOrdenTrabajo) REFERENCES LOS_GEDEDES.BI_dimension_OT,
-FOREIGN KEY (tiempo) REFERENCES LOS_GEDEDES.BI_dimension_tiempo
+FOREIGN KEY (tiempo) REFERENCES LOS_GEDEDES.BI_dimension_tiempo,
 FOREIGN KEY (idTaller) REFERENCES LOS_GEDEDES.BI_dimension_taller
 );
