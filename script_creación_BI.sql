@@ -38,6 +38,9 @@ IF EXISTS (select * from sys.objects where object_id = OBJECT_ID('LOS_GEDEDES.BI
 
 IF EXISTS (select * from sys.objects where object_id = OBJECT_ID('LOS_GEDEDES.BI_dimension_paquete') and type = 'U')
 	DROP TABLE LOS_GEDEDES.BI_dimension_paquete
+	
+IF EXISTS (select * from sys.objects where object_id = OBJECT_ID('LOS_GEDEDES.BI_dimension_taller') and type = 'U')
+	DROP TABLE LOS_GEDEDES.BI_dimension_taller
   
 ------------ CREACION DE TABLAS ----------------
 
@@ -51,7 +54,7 @@ telefono		INT,
 mail			NVARCHAR(255),
 fecha_nac		DATETIME2(3),
 costo_hora		INT,
-rangoEtario 	NVARCHAR(255),
+rangoEtario 	NVARCHAR(15),
 --fechaViaje DATETIME2(3) 
 /*Lo comento porque no se si va aca, mepa que en la tabla de bi viaje,
 quiza dentro de la dimension tiempo*/
@@ -60,8 +63,7 @@ PRIMARY KEY (nroLegajo)
 
 CREATE TABLE LOS_GEDEDES.BI_dimension_OT(
 nroOrden		INT, /*No le pongo IDENTITY por lo que puse abajo*/
-patenteCamion	NVARCHAR(255),
-estado			INT,
+estado			NVARCHAR(255),
 fechaCarga		NVARCHAR(255),/*Quiza con la dimension tiempo no sea necesario este campo*/
 PRIMARY KEY (nroOrden)
 );
@@ -102,7 +104,6 @@ fechaFin		DATETIME2(3),
 PRIMARY KEY (codigo)
 )
 
-
 CREATE TABLE LOS_GEDEDES.BI_dimension_material(
 codigo			NVARCHAR(100),
 descripcion		NVARCHAR(255),
@@ -119,7 +120,7 @@ dni			DECIMAL(18,0),
 direccion	NVARCHAR(255),
 telefono	INT,
 mail		NVARCHAR(255),
-fecha_nac	DATETIME2(3),
+rangoEtario	NVARCHAR(15), /*joven, adulto, mayor*/
 costo_hora	INT,
 PRIMARY KEY (nroLegajo),
 )
@@ -147,6 +148,16 @@ precioFinalPaquete	DECIMAL(18,2),
 PRIMARY KEY (nroPaquete),
 )
 
+CREATE TABLE LOS_GEDEDES.BI_dimension_taller(
+id			INT,
+nombre		NVARCHAR(255),
+direccion	NVARCHAR(255),
+telefono	DECIMAL(18,0),
+mail		NVARCHAR(255),
+ciudad		NVARCHAR(255),
+PRIMARY KEY (id)
+)
+
 CREATE TABLE LOS_GEDEDES.BI_viaje(
 choferLegajo 		INT,
 patenteCamion		NVARCHAR(255),
@@ -169,7 +180,8 @@ choferLegajo 		INT,
 codigoTarea			INT,
 codigoMaterial 		NVARCHAR(100),
 nroOrdenTrabajo 	INT,
-tiempo 				INT
+tiempo 				INT,
+idTaller			INT,
 PRIMARY KEY(patenteCamion, choferLegajo, codigoTarea,
 codigoMaterial, nroOrdenTrabajo, tiempo)
 FOREIGN KEY (patenteCamion) REFERENCES LOS_GEDEDES.BI_dimension_camion,
@@ -178,4 +190,5 @@ FOREIGN KEY (codigoTarea) REFERENCES LOS_GEDEDES.BI_dimension_tarea,
 FOREIGN KEY (codigoMaterial) REFERENCES LOS_GEDEDES.BI_dimension_material,
 FOREIGN KEY (nroOrdenTrabajo) REFERENCES LOS_GEDEDES.BI_dimension_OT,
 FOREIGN KEY (tiempo) REFERENCES LOS_GEDEDES.BI_dimension_tiempo
+FOREIGN KEY (idTaller) REFERENCES LOS_GEDEDES.BI_dimension_taller
 );
