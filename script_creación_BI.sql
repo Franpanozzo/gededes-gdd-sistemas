@@ -2,6 +2,9 @@
 
 IF EXISTS (select * from sys.objects where object_id = OBJECT_ID('LOS_GEDEDES.BI_viaje') and type = 'U')
 	DROP TABLE LOS_GEDEDES.BI_viaje
+
+IF EXISTS (select * from sys.objects where object_id = OBJECT_ID('LOS_GEDEDES.BI_reparacion') and type = 'U')
+	DROP TABLE LOS_GEDEDES.BI_reparacion
   
 IF EXISTS (select * from sys.objects where object_id = OBJECT_ID('LOS_GEDEDES.BI_dimension_camion') and type = 'U')
 	DROP TABLE LOS_GEDEDES.BI_dimension_camion
@@ -20,16 +23,22 @@ IF EXISTS (select * from sys.objects where object_id = OBJECT_ID('LOS_GEDEDES.BI
 
 IF EXISTS (select * from sys.objects where object_id = OBJECT_ID('LOS_GEDEDES.BI_mecanico') and type = 'U')
 	DROP TABLE LOS_GEDEDES.BI_mecanico
+
+IF EXISTS (select * from sys.objects where object_id = OBJECT_ID('LOS_GEDEDES.BI_chofer') and type = 'U')
+	DROP TABLE LOS_GEDEDES.BI_chofer
+
+IF EXISTS (select * from sys.objects where object_id = OBJECT_ID('LOS_GEDEDES.BI_dimesion_OT') and type = 'U')
+	DROP TABLE LOS_GEDEDES.BI_dimension_OT
  
   
 ------------ CREACION DE TABLAS ----------------
 
 CREATE TABLE LOS_GEDEDES.BI_viaje(
-choferLegajo INT,
+choferLegajo 	INT,
 patenteCamion	NVARCHAR(255),
 recorrido	INT,
-tiempo INT,
-nroPaquete INT,
+tiempo 		INT,
+nroPaquete 	INT,
 precioRecorrido INT,
 naftaConsumida	DECIMAL(18,2),
 PRIMARY KEY (choferLegajo, patenteCamion, recorrido, tiempo, nroPaquete),
@@ -38,6 +47,47 @@ FOREIGN KEY (patenteCamion) REFERENCES LOS_GEDEDES.BI_dimension_camion,
 FOREIGN KEY (choferLegajo) REFERENCES LOS_GEDEDES.BI_dimension_chofer,
 FOREIGN KEY (recorrido) REFERENCES LOS_GEDEDES.BI_dimension_recorrido,
 FOREIGN KEY (tiempo) REFERENCES LOS_GEDEDES.BI_dimension_tiempo
+);
+
+CREATE TABLE LOS_GEDEDES.BI_reparacion(
+patenteCamion		NVARCHAR(255),
+choferLegajo 		INT,
+codigoTarea		INT,
+codigoMaterial 		INT,
+nroOrdenTrabajo 	INT,
+tiempo 			INT
+PRIMARY KEY(patenteCamion, choferLegajo, codigoTarea,
+codigoMaterial, nroOrdenTrabajo, tiempo)
+FOREIGN KEY (patenteCamion) REFERENCES LOS_GEDEDES.BI_dimension_camion,
+FOREIGN KEY (choferLegajo) REFERENCES LOS_GEDEDES.BI_dimension_chofer,
+FOREIGN KEY (codigoTarea) REFERENCES LOS_GEDEDES.BI_tarea,
+FOREIGN KEY (codigoMaterial) REFERENCES LOS_GEDEDES.BI_material,
+FOREIGN KEY (nroOrdenTrabajo) REFERENCES LOS_GEDEDES.BI_dimesion_OT,
+FOREIGN KEY (tiempo) REFERENCES LOS_GEDEDES.BI_dimension_tiempo
+);
+
+CREATE TABLE LOS_GEDEDES.BI_chofer(
+nroLegajo	INT,
+nombre		NVARCHAR(255),
+apellido	NVARCHAR(255),
+dni		DECIMAL(18,0),
+direccion	NVARCHAR(255),
+telefono	INT,
+mail		NVARCHAR(255),
+fecha_nac	DATETIME2(3),
+costo_hora	INT,
+rangoEtario 	NVARCHAR(255),
+--fechaViaje DATETIME2(3) 
+/*Lo comento porque no se si va aca, mepa que en la tabla de bi viaje,
+quiza dentro de la dimension tiempo*/
+PRIMARY KEY (nroLegajo),
+);
+
+CREATE TABLE LOS_GEDEDES.BI_dimension_OT(
+nroOrden	INT, /*No le pongo IDENTITY por lo que puse abajo*/
+patenteCamion	NVARCHAR(255),
+estado		INT,
+fechaCarga	NVARCHAR(255),/*Quiza con la dimension tiempo no sea necesario este campo*/
 );
 
 CREATE TABLE LOS_GEDEDES.BI_dimension_camion(
@@ -56,7 +106,9 @@ PRIMARY KEY (idTiempo)
 );
 
 CREATE TABLE LOS_GEDEDES.BI_dimension_recorrido(
-nroRecorrido	INT IDENTITY(1,1),
+nroRecorrido	INT IDENTITY(1,1), 
+/*Con el IDENTITY?? Yo creo que los datos que van aca son los precargados de las tablas que ya hicimos
+por que lo poner identity podria generar que halla un recorrido igual pero con dos IDs diferentes*/
 precioRecorrido	DECIMAL(18,2),
 ciudadOrigen	NVARCHAR(255),   /*Desnormalizo las ciudades entendiendo que no se pueden poner FKs en la dimension*/
 ciudadDestino	NVARCHAR(255),
@@ -69,8 +121,8 @@ CREATE TABLE LOS_GEDEDES.BI_tarea(
 codigo			INT,
 descripcion		NVARCHAR(255),
 tipo			NVARCHAR(255),
-fechaInicio			DATETIME2(3),
-fechaFin			DATETIME2(3),
+fechaInicio		DATETIME2(3),
+fechaFin		DATETIME2(3),
 PRIMARY KEY (codigo)
 )
 
@@ -83,12 +135,11 @@ cantidad		INT,
 PRIMARY KEY (codigo)
 )
 
-
 CREATE TABLE LOS_GEDEDES.BI_mecanico(
 nroLegajo	INT,
 nombre		NVARCHAR(255),
 apellido	NVARCHAR(255),
-dni			DECIMAL(18,0),
+dni		DECIMAL(18,0),
 direccion	NVARCHAR(255),
 telefono	INT,
 mail		NVARCHAR(255),
@@ -96,9 +147,5 @@ fecha_nac	DATETIME2(3),
 costo_hora	INT,
 PRIMARY KEY (nroLegajo),
 )
-
-
-
-
 
 
