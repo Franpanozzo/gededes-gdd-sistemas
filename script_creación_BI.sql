@@ -62,9 +62,9 @@ PRIMARY KEY (nroLegajo)
 );
 
 CREATE TABLE LOS_GEDEDES.BI_dimension_OT(
-nroOrden		INT, /*No le pongo IDENTITY por lo que puse abajo*/
+nroOrden		INT, 
 estado			NVARCHAR(255),
-fechaCarga		NVARCHAR(255),/*Quiza con la dimension tiempo no sea necesario este campo*/
+fechaCarga		NVARCHAR(255), /*Quiza con la dimension tiempo no sea necesario este campo*/
 PRIMARY KEY (nroOrden)
 );
 
@@ -77,18 +77,16 @@ PRIMARY KEY (patente)
 );
 
 CREATE TABLE LOS_GEDEDES.BI_dimension_tiempo(
-idTiempo		INT IDENTITY(1,1),
+idTiempo		INT,
 anio			INT,
 cuatrimestre	INT,
 PRIMARY KEY (idTiempo)
 );
 
 CREATE TABLE LOS_GEDEDES.BI_dimension_recorrido(
-nroRecorrido	INT IDENTITY(1,1), 
-/*Con el IDENTITY?? Yo creo que los datos que van aca son los precargados de las tablas que ya hicimos
-por que lo poner identity podria generar que halla un recorrido igual pero con dos IDs diferentes*/
+nroRecorrido	INT,
 precioRecorrido	DECIMAL(18,2),
-ciudadOrigen	NVARCHAR(255),   /*Desnormalizo las ciudades entendiendo que no se pueden poner FKs en la dimension*/
+ciudadOrigen	NVARCHAR(255),  
 ciudadDestino	NVARCHAR(255),
 recorridoKM		INT,
 PRIMARY KEY (nroRecorrido)
@@ -134,6 +132,9 @@ PRIMARY KEY (codigo),
 CREATE TABLE LOS_GEDEDES.BI_dimension_modelo(
 codigo	INT,
 modelo	NVARCHAR(255),
+capacidadCarga INT,
+capacidadTanque INT,
+velocidadMaxima INT,
 PRIMARY KEY (codigo),
 )
 
