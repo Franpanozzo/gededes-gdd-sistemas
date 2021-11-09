@@ -302,7 +302,7 @@ FROM LOS_GEDEDES.mecanico m
 --SANTI FIN
 
 
---PROCEDURE DIMENSION CAMION
+--PROCEDURE DIMENSION CAMION--
 
 IF EXISTS (SELECT * FROM sys.objects WHERE name = 'cargarDimensionCamion')
 	DROP PROCEDURE LOS_GEDEDES.cargarDimensionCamion
@@ -330,7 +330,7 @@ BEGIN
 END
 GO
 
---PROCEDURE DIMENSION TIEMPO
+--PROCEDURE DIMENSION TIEMPO--
 
 IF EXISTS (SELECT * FROM sys.objects WHERE name = 'cargarDimensionTiempo')
 	DROP PROCEDURE LOS_GEDEDES.cargarDimensionTiempo
@@ -359,7 +359,7 @@ BEGIN
 END
 GO
 
---PROCEDURE DIMENSION RECORRIDO
+--PROCEDURE DIMENSION RECORRIDO--
 
 IF EXISTS (SELECT * FROM sys.objects WHERE name = 'cargarDimensionRecorrido')
 	DROP PROCEDURE LOS_GEDEDES.cargarDimensionRecorrido
@@ -388,7 +388,35 @@ BEGIN
 END
 GO
 
---PROCEDURE FACT TABLE
+--PROCEDURE DIMENSION CHOFER--
+
+IF EXISTS (SELECT * FROM sys.objects WHERE name = 'cargarDimensionChofer')
+	DROP PROCEDURE LOS_GEDEDES.cargarDimensionChofer
+GO
+
+CREATE PROCEDURE LOS_GEDEDES.cargarDimensionChofer
+AS
+BEGIN
+	BEGIN TRY
+		BEGIN TRANSACTION
+
+			INSERT INTO LOS_GEDEDES.BI_dimension_chofer (nroLegajo,nombre,apellido,dni,direccion,telefono,mail,fecha_nac,costo_hora, rangoEtario)
+			SELECT c.nroLegajo, c.nombre, c.apellido, c.dni, c.direccion, c.telefono, c.mail, c.fecha_nac, c.costo_hora, LOS_GEDEDES.rangoEtario_fx(c.fecha_nac)
+			FROM LOS_GEDEDES.Chofer c
+
+		COMMIT TRANSACTION
+	END TRY
+
+	BEGIN CATCH
+		ROLLBACK TRANSACTION;
+		DECLARE @errorDescripcion VARCHAR(255)
+		SELECT @errorDescripcion = ERROR_MESSAGE() + ' Error en el insert de la dimension chofer';
+        THROW 50000, @errorDescripcion, 1
+	END CATCH
+END
+GO
+
+--PROCEDURE FACT TABLE VIAJE--
 
 IF EXISTS (SELECT * FROM sys.objects WHERE name = 'cargarFactTableViaje')
 	DROP PROCEDURE LOS_GEDEDES.cargarFactTableViaje
@@ -419,7 +447,44 @@ BEGIN
 END
 GO
 
+-- PROCEDURE FACT TABLE REPARACION --
 
+IF EXISTS (SELECT * FROM sys.objects WHERE name = 'cargarFactTableReparacion')
+	DROP PROCEDURE LOS_GEDEDES.cargarFactTableReparacion
+GO
+
+CREATE PROCEDURE LOS_GEDEDES.cargarFactTableReparacion
+AS
+BEGIN
+	BEGIN TRY
+		BEGIN TRANSACTION
+
+			/*Directamente cargo todas las PK de las dimensiones porque basicamente no tengo que hacer nada mas que eso,
+			no hace falta hacer un join*/
+
+			INSERT INTO LOS_GEDEDES.BI_reparacion (patenteCamion, codigoMarca, codigoModelo, choferLegajo, codigoTarea,
+			codigoMaterial, tiempo, idTaller)
+			SELECT c.patente, mar.codigo, mod.codigo, cho.nroLegajo, tar.codigo, mat.codigo, tiem.idTiempo, tall.id
+			FROM LOS_GEDEDES.BI_dimension_camion c, LOS_GEDEDES.BI_dimension_marca mar, LOS_GEDEDES.BI_dimension_modelo mod,
+			LOS_GEDEDES.BI_dimension_chofer cho, LOS_GEDEDES.BI_dimension_tarea tar, LOS_GEDEDES.BI_dimension_material mat,
+			LOS_GEDEDES.BI_dimension_tiempo tiem, LOS_GEDEDES.BI_dimension_taller tall --No se si esta bien
+
+		COMMIT TRANSACTION
+	END TRY
+
+	BEGIN CATCH
+		ROLLBACK TRANSACTION;
+		DECLARE @errorDescripcion VARCHAR(255)
+		SELECT @errorDescripcion = ERROR_MESSAGE() + ' Error en el insert de la tabla de hechos de reparacion';
+        THROW 50000, @errorDescripcion, 1
+	END CATCH
+END
+GO
+
+-------EXEC DE LOS PROCEDURES--------
+
+EXEC LOS_GEDEDES.cargarDimensionChofer
+EXEC LOS_GEDES.cargarFactTableReparacion
 EXEC LOS_GEDEDES.cargarDimensionRecorrido
 EXEC LOS_GEDEDES.cargarDimensionTiempo
 EXEC LOS_GEDEDES.cargarDimensionCamion
