@@ -248,7 +248,7 @@ CREATE TABLE LOS_GEDEDES.BI_reparacion(
 patenteCamion		NVARCHAR(255),
 codigoMarca			INT,
 codigoModelo		INT,
-choferLegajo 		INT,
+mecanicoLegajo 		INT,
 codigoTarea			INT,
 codigoMaterial 		NVARCHAR(100),
 --nroOrdenTrabajo 	INT,
@@ -259,7 +259,7 @@ codigoMaterial, /*nroOrdenTrabajo,*/ tiempo, idTaller),
 FOREIGN KEY (patenteCamion) REFERENCES LOS_GEDEDES.BI_dimension_camion,
 FOREIGN KEY (codigoMarca) REFERENCES LOS_GEDEDES.BI_dimension_marca,
 FOREIGN KEY (codigoModelo) REFERENCES LOS_GEDEDES.BI_dimension_modelo,
-FOREIGN KEY (choferLegajo) REFERENCES LOS_GEDEDES.BI_dimension_chofer,
+FOREIGN KEY (choferLegajo) REFERENCES LOS_GEDEDES.BI_dimension_mecanico,
 FOREIGN KEY (codigoTarea) REFERENCES LOS_GEDEDES.BI_dimension_tarea,
 FOREIGN KEY (codigoMaterial) REFERENCES LOS_GEDEDES.BI_dimension_material,
 --FOREIGN KEY (nroOrdenTrabajo) REFERENCES LOS_GEDEDES.BI_dimension_OT,
@@ -464,9 +464,9 @@ BEGIN
 
 			INSERT INTO LOS_GEDEDES.BI_reparacion (patenteCamion, codigoMarca, codigoModelo, choferLegajo, codigoTarea,
 			codigoMaterial, tiempo, idTaller)
-			SELECT c.patente, mar.codigo, mod.codigo, cho.nroLegajo, tar.codigo, mat.codigo, tiem.idTiempo, tall.id
+			SELECT c.patente, mar.codigo, mod.codigo, mec.nroLegajo, tar.codigo, mat.codigo, tiem.idTiempo, tall.id
 			FROM LOS_GEDEDES.BI_dimension_camion c, LOS_GEDEDES.BI_dimension_marca mar, LOS_GEDEDES.BI_dimension_modelo mod,
-			LOS_GEDEDES.BI_dimension_chofer cho, LOS_GEDEDES.BI_dimension_tarea tar, LOS_GEDEDES.BI_dimension_material mat,
+			LOS_GEDEDES.BI_dimension_mecanico mec, LOS_GEDEDES.BI_dimension_tarea tar, LOS_GEDEDES.BI_dimension_material mat,
 			LOS_GEDEDES.BI_dimension_tiempo tiem, LOS_GEDEDES.BI_dimension_taller tall --No se si esta bien
 
 		COMMIT TRANSACTION
