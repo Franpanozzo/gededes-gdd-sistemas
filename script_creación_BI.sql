@@ -6,7 +6,7 @@ IF EXISTS (select * from sys.objects where object_id = OBJECT_ID('LOS_GEDEDES.ra
 IF EXISTS (select * from sys.objects where object_id = OBJECT_ID('LOS_GEDEDES.cuatrimestre_fx') and type = 'FN')
 	DROP FUNCTION LOS_GEDEDES.cuatrimestre_fx
 
-
+GO
 CREATE FUNCTION LOS_GEDEDES.rangoEtario_fx(@fecha_nac DATETIME2(3))
 RETURNS NVARCHAR(15)
 AS
@@ -26,24 +26,26 @@ BEGIN
 		END
 
 	RETURN @rango
-END;
+END
+GO
 
 CREATE FUNCTION LOS_GEDEDES.cuatrimestre_fx(@fecha DATETIME2(3))
 RETURNS INT
 AS BEGIN
-	DECLARE @cuatrimetre INT
+	DECLARE @cuatrimestre INT
 	DECLARE @numeroMes INT
 
 	SELECT @numeroMes = MONTH(@fecha)
 
 	SELECT @cuatrimestre = CASE
-		WHEN @numeroMes >= 1 AND @numeroMes =< 4 THEN 1
+		WHEN @numeroMes >= 1 AND @numeroMes <= 4 THEN 1
 		WHEN @numeroMes > 4 AND @numeroMes <= 8 THEN 2 
 		WHEN @numeroMes > 8 AND @numeroMes <= 12 THEN 3 
+		END
 	
 	RETURN @cuatrimestre
-END;
-
+END
+GO
 ------------- DROP TABLAS -----------------------
 
 IF EXISTS (select * from sys.objects where object_id = OBJECT_ID('LOS_GEDEDES.BI_viaje') and type = 'U')
@@ -177,6 +179,9 @@ PRIMARY KEY (codigo),
 CREATE TABLE LOS_GEDEDES.BI_dimension_modelo(
 codigo	INT,
 modelo	NVARCHAR(255),
+velocidadMaxima DECIMAL(18,2),
+capacidadCarga DECIMAL(18,2),
+capacidadTanque DECIMAL(18,2),
 PRIMARY KEY (codigo),
 )
 
@@ -226,18 +231,18 @@ codigoModelo		INT,
 choferLegajo 		INT,
 codigoTarea			INT,
 codigoMaterial 		NVARCHAR(100),
-nroOrdenTrabajo 	INT,
+--nroOrdenTrabajo 	INT,
 tiempo 				INT,
 idTaller			INT,
 PRIMARY KEY(patenteCamion, codigoMarca, codigoModelo, choferLegajo, codigoTarea,
-codigoMaterial, nroOrdenTrabajo, tiempo, idTaller),
+codigoMaterial, /*nroOrdenTrabajo,*/ tiempo, idTaller),
 FOREIGN KEY (patenteCamion) REFERENCES LOS_GEDEDES.BI_dimension_camion,
 FOREIGN KEY (codigoMarca) REFERENCES LOS_GEDEDES.BI_dimension_marca,
 FOREIGN KEY (codigoModelo) REFERENCES LOS_GEDEDES.BI_dimension_modelo,
 FOREIGN KEY (choferLegajo) REFERENCES LOS_GEDEDES.BI_dimension_chofer,
 FOREIGN KEY (codigoTarea) REFERENCES LOS_GEDEDES.BI_dimension_tarea,
 FOREIGN KEY (codigoMaterial) REFERENCES LOS_GEDEDES.BI_dimension_material,
-FOREIGN KEY (nroOrdenTrabajo) REFERENCES LOS_GEDEDES.BI_dimension_OT,
+--FOREIGN KEY (nroOrdenTrabajo) REFERENCES LOS_GEDEDES.BI_dimension_OT,
 FOREIGN KEY (tiempo) REFERENCES LOS_GEDEDES.BI_dimension_tiempo,
 FOREIGN KEY (idTaller) REFERENCES LOS_GEDEDES.BI_dimension_taller
 );
@@ -245,7 +250,7 @@ FOREIGN KEY (idTaller) REFERENCES LOS_GEDEDES.BI_dimension_taller
 ----------LLENADO DE LAS DIMENSIONES Y TABLA DE HECHOS-------------
 
 INSERT INTO LOS_GEDEDES.BI_dimension_chofer (nroLegajo,nombre,apellido,dni,direccion,telefono,mail,fecha_nac,costo_hora, rangoEtario)
-SELECT c.nroLegajo, c.nombre, c.apellido, c.dni, c.direccion, c.telefono, c.mail, c.fecha_nac, c.costo_hora, rangoEtario_fx(c.fecha_nac)
+SELECT c.nroLegajo, c.nombre, c.apellido, c.dni, c.direccion, c.telefono, c.mail, c.fecha_nac, c.costo_hora, LOS_GEDEDES.rangoEtario_fx(c.fecha_nac)
 FROM LOS_GEDEDES.Chofer c
 
 INSERT INTO LOS_GEDEDES.BI_dimension_marca (codigo, nombre) 
