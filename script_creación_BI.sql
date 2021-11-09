@@ -5,6 +5,10 @@ IF EXISTS (select * from sys.objects where object_id = OBJECT_ID('LOS_GEDEDES.ra
 
 IF EXISTS (select * from sys.objects where object_id = OBJECT_ID('LOS_GEDEDES.cuatrimestre_fx') and type = 'FN')
 	DROP FUNCTION LOS_GEDEDES.cuatrimestre_fx
+	
+IF EXISTS (select * from sys.objects where object_id = OBJECT_ID('LOS_GEDEDES.asignarTiempo_fx') and type = 'FN')
+	DROP FUNCTION LOS_GEDEDES.asignarTiempo_fx
+
 
 GO
 CREATE FUNCTION LOS_GEDEDES.rangoEtario_fx(@fecha_nac DATETIME2(3))
@@ -46,6 +50,22 @@ AS BEGIN
 	RETURN @cuatrimestre
 END
 GO
+
+GO
+CREATE FUNCTION LOS_GEDEDES.asignarTiempo_fx(@fechaInicio DATETIME2(7))
+RETURNS INT
+AS
+BEGIN
+	DECLARE @pkTiempo INT
+
+	SELECT @pkTiempo = (SELECT idTiempo FROM LOS_GEDEDES.BI_dimension_tiempo
+	WHERE anio = YEAR(@fechaInicio)
+	AND mes = MONTH(@fechaInicio))
+
+	RETURN @pkTiempo
+END
+GO
+
 ------------- DROP TABLAS -----------------------
 
 IF EXISTS (select * from sys.objects where object_id = OBJECT_ID('LOS_GEDEDES.BI_viaje') and type = 'U')
@@ -266,11 +286,6 @@ SELECT tp.nroPaquete, tp.tipo, tp.largoMax, tp.precioBase, tp.pesoMax, tp.altoMa
 FROM LOS_GEDEDES.Paquete_viaje pv 
 JOIN LOS_GEDEDES.Tipo_Paquete tp ON (pv.nroPaquete = tp.nroPaquete)
 
-INSERT INTO LOS_GEDEDES.BI_dimension_tiempo (anio, mes, cuatrimestre)
-SELECT DISTINCT YEAR(fechaInicio), MONTH(fechaInicio), LOS_GEDEDES.cuatrimestre_fx(fechaInicio) FROM LOS_GEDEDES.BI_dimension_tarea
-UNION 
-SELECT DISTINCT YEAR(fechaInicio), MONTH(fechaInicio), LOS_GEDEDES.cuatrimestre_fx(fechaInicio) FROM LOS_GEDEDES.BI_viaje
-
 --SANTI INICIO	
 INSERT INTO LOS_GEDEDES.BI_dimension_taller
 	(id, nombre, direccion, telefono, mail, ciudad)
@@ -285,3 +300,128 @@ FROM LOS_GEDEDES.mecanico m
 	JOIN LOS_GEDEDES.Ciudad ci ON (ci.codigoCiudad = t.codCiudad)
 
 --SANTI FIN
+
+
+--PROCEDURE DIMENSION CAMION
+
+IF EXISTS (SELECT * FROM sys.objects WHERE name = 'cargarDimensionCamion')
+	DROP PROCEDURE LOS_GEDEDES.cargarDimensionCamion
+GO
+
+CREATE PROCEDURE LOS_GEDEDES.cargarDimensionCamion
+AS
+BEGIN
+	BEGIN TRY
+		BEGIN TRANSACTION
+			
+			INSERT INTO LOS_GEDEDES.BI_dimension_camion (patente, nroChasis, nroMotor, fechaAlta)
+			SELECT patente, nroChasis, nroMotor, fechaAlta
+			FROM LOS_GEDEDES.Camion
+		
+		COMMIT TRANSACTION
+	END TRY
+
+	BEGIN CATCH
+		ROLLBACK TRANSACTION;
+		DECLARE @errorDescripcion VARCHAR(255)
+		SELECT @errorDescripcion = ERROR_MESSAGE() + ' Error en el insert de la dimension Camion';
+        THROW 50000, @errorDescripcion, 1
+	END CATCH
+END
+GO
+
+--PROCEDURE DIMENSION TIEMPO
+
+IF EXISTS (SELECT * FROM sys.objects WHERE name = 'cargarDimensionTiempo')
+	DROP PROCEDURE LOS_GEDEDES.cargarDimensionTiempo
+GO
+
+CREATE PROCEDURE LOS_GEDEDES.cargarDimensionTiempo
+AS
+BEGIN
+	BEGIN TRY
+		BEGIN TRANSACTION
+			
+		INSERT INTO LOS_GEDEDES.BI_dimension_tiempo (anio, mes, cuatrimestre)
+		SELECT DISTINCT YEAR(fechaInicio), MONTH(fechaInicio), LOS_GEDEDES.cuatrimestre_fx(fechaInicio) FROM LOS_GEDEDES.tarea_orden
+		UNION 
+		SELECT DISTINCT YEAR(fechaInicio), MONTH(fechaInicio), LOS_GEDEDES.cuatrimestre_fx(fechaInicio) FROM LOS_GEDEDES.Viaje
+
+		COMMIT TRANSACTION
+	END TRY
+
+	BEGIN CATCH
+		ROLLBACK TRANSACTION;
+		DECLARE @errorDescripcion VARCHAR(255)
+		SELECT @errorDescripcion = ERROR_MESSAGE() + ' Error en el insert de la dimension Tiempo';
+        THROW 50000, @errorDescripcion, 1
+	END CATCH
+END
+GO
+
+--PROCEDURE DIMENSION RECORRIDO
+
+IF EXISTS (SELECT * FROM sys.objects WHERE name = 'cargarDimensionRecorrido')
+	DROP PROCEDURE LOS_GEDEDES.cargarDimensionRecorrido
+GO
+
+CREATE PROCEDURE LOS_GEDEDES.cargarDimensionRecorrido
+AS
+BEGIN
+	BEGIN TRY
+		BEGIN TRANSACTION
+			
+		INSERT INTO LOS_GEDEDES.BI_dimension_recorrido(nroRecorrido, precioRecorrido, ciudadOrigen, ciudadDestino, recorridoKM)
+		SELECT nroRecorrido, precioRecorrido, c1.nombre, c2.nombre, recorridoKM
+		FROM LOS_GEDEDES.Recorrido r JOIN LOS_GEDEDES.Ciudad c1 ON(c1.codigoCiudad = r.ciudadOrigen)
+									 JOIN LOS_GEDEDES.Ciudad c2 ON(c2.codigoCiudad = r.ciudadDestino)
+
+		COMMIT TRANSACTION
+	END TRY
+
+	BEGIN CATCH
+		ROLLBACK TRANSACTION;
+		DECLARE @errorDescripcion VARCHAR(255)
+		SELECT @errorDescripcion = ERROR_MESSAGE() + ' Error en el insert de la dimension Recorrido';
+        THROW 50000, @errorDescripcion, 1
+	END CATCH
+END
+GO
+
+--PROCEDURE FACT TABLE
+
+IF EXISTS (SELECT * FROM sys.objects WHERE name = 'cargarFactTableViaje')
+	DROP PROCEDURE LOS_GEDEDES.cargarFactTableViaje
+GO
+
+CREATE PROCEDURE LOS_GEDEDES.cargarFactTableViaje
+AS
+BEGIN
+	BEGIN TRY
+		BEGIN TRANSACTION
+
+        /*Como las dimensiones se cargan en base a nuestras tablas, directamente saco los datos de las FK de nuestras tablas, no hace falta que joinee por 
+        la dimension que necesito, si total estas dimensiones tienen de PK las PK originales */
+			
+		INSERT INTO LOS_GEDEDES.BI_viaje (choferLegajo, patenteCamion, recorrido, tiempo, nroPaquete, precioRecorrido, naftaConsumida)
+		SELECT choferLegajo, patenteCamion, recorrido, LOS_GEDEDES.asignarTiempo_fx(fechaInicio), pv.id, precioRecorrido, naftaConsumida
+		FROM LOS_GEDEDES.Viaje v JOIN LOS_GEDEDES.Paquete_viaje pv ON(pv.nroViaje = v.nroViaje)
+
+		COMMIT TRANSACTION
+	END TRY
+
+	BEGIN CATCH
+		ROLLBACK TRANSACTION;
+		DECLARE @errorDescripcion VARCHAR(255)
+		SELECT @errorDescripcion = ERROR_MESSAGE() + ' Error en el insert de la fact table Viaje';
+        THROW 50000, @errorDescripcion, 1
+	END CATCH
+END
+GO
+
+
+EXEC LOS_GEDEDES.cargarDimensionRecorrido
+EXEC LOS_GEDEDES.cargarDimensionTiempo
+EXEC LOS_GEDEDES.cargarDimensionCamion
+EXEC LOS_GEDEDES.cargarFactTableViaje
+
