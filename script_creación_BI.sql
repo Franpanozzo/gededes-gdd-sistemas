@@ -164,8 +164,6 @@ CREATE TABLE LOS_GEDEDES.BI_dimension_tarea(
 codigo			INT,
 descripcion		NVARCHAR(255),
 tipo			NVARCHAR(255),
-fechaInicio		DATETIME2(3),
-fechaFin		DATETIME2(3),
 PRIMARY KEY (codigo)
 )
 
@@ -254,12 +252,12 @@ codigoMaterial 		NVARCHAR(100),
 --nroOrdenTrabajo 	INT,
 tiempo 				INT,
 idTaller			INT,
-PRIMARY KEY(patenteCamion, codigoMarca, codigoModelo, choferLegajo, codigoTarea,
+PRIMARY KEY(patenteCamion, codigoMarca, codigoModelo, mecanicoLegajo, codigoTarea,
 codigoMaterial, /*nroOrdenTrabajo,*/ tiempo, idTaller),
 FOREIGN KEY (patenteCamion) REFERENCES LOS_GEDEDES.BI_dimension_camion,
 FOREIGN KEY (codigoMarca) REFERENCES LOS_GEDEDES.BI_dimension_marca,
 FOREIGN KEY (codigoModelo) REFERENCES LOS_GEDEDES.BI_dimension_modelo,
-FOREIGN KEY (choferLegajo) REFERENCES LOS_GEDEDES.BI_dimension_mecanico,
+FOREIGN KEY (mecanicoLegajo) REFERENCES LOS_GEDEDES.BI_dimension_mecanico,
 FOREIGN KEY (codigoTarea) REFERENCES LOS_GEDEDES.BI_dimension_tarea,
 FOREIGN KEY (codigoMaterial) REFERENCES LOS_GEDEDES.BI_dimension_material,
 --FOREIGN KEY (nroOrdenTrabajo) REFERENCES LOS_GEDEDES.BI_dimension_OT,
@@ -286,21 +284,122 @@ SELECT tp.nroPaquete, tp.tipo, tp.largoMax, tp.precioBase, tp.pesoMax, tp.altoMa
 FROM LOS_GEDEDES.Paquete_viaje pv 
 JOIN LOS_GEDEDES.Tipo_Paquete tp ON (pv.nroPaquete = tp.nroPaquete)
 
---SANTI INICIO	
-INSERT INTO LOS_GEDEDES.BI_dimension_taller
-	(id, nombre, direccion, telefono, mail, ciudad)
-SELECT  t.id, t.nombre, t.direccion, t.telefono, t.mail, ci.nombre 
-FROM LOS_GEDEDES.taller t
-	JOIN LOS_GEDEDES.Ciudad ci ON (ci.codigoCiudad = t.codCiudad)
+--PROCEDURE DIMENSION TALLER--
 
-INSERT INTO LOS_GEDEDES.BI_dimension_mecanico
-	(nroLegajo, nombre, apellido, dni, direccion, telefono, mail, rangoEtario, costo_hora)
-SELECT  t.id, t.nombre, t.direccion, t.telefono, t.mail, ci.nombre 
-FROM LOS_GEDEDES.mecanico m
-	JOIN LOS_GEDEDES.Ciudad ci ON (ci.codigoCiudad = t.codCiudad)
+IF EXISTS (SELECT * FROM sys.objects WHERE name = 'cargarDimensionTaller')
+	DROP PROCEDURE LOS_GEDEDES.cargarDimensionTaller
+GO
 
---SANTI FIN
+CREATE PROCEDURE LOS_GEDEDES.cargarDimensionTaller
+AS
+BEGIN
+	BEGIN TRY
+		BEGIN TRANSACTION
+			
+			INSERT INTO LOS_GEDEDES.BI_dimension_taller
+				(id, nombre, direccion, telefono, mail, ciudad)
+			SELECT  t.id, t.nombre, t.direccion, t.telefono, t.mail, ci.nombre 
+			FROM LOS_GEDEDES.taller t
+				JOIN LOS_GEDEDES.Ciudad ci ON (ci.codigoCiudad = t.codCiudad)
+		
+		COMMIT TRANSACTION
+	END TRY
 
+	BEGIN CATCH
+		ROLLBACK TRANSACTION;
+		DECLARE @errorDescripcion VARCHAR(255)
+		SELECT @errorDescripcion = ERROR_MESSAGE() + ' Error en el insert de la dimension Taller';
+        THROW 50000, @errorDescripcion, 1
+	END CATCH
+END
+GO
+
+--PROCEDURE DIMENSION MECANICO--
+
+IF EXISTS (SELECT * FROM sys.objects WHERE name = 'cargarDimensionMecanico')
+	DROP PROCEDURE LOS_GEDEDES.cargarDimensionMecanico
+GO
+
+CREATE PROCEDURE LOS_GEDEDES.cargarDimensionMecanico
+AS
+BEGIN
+	BEGIN TRY
+		BEGIN TRANSACTION
+			
+			INSERT INTO LOS_GEDEDES.BI_dimension_mecanico
+				(nroLegajo, nombre, apellido, dni, direccion, telefono, mail, rangoEtario, costo_hora)
+			SELECT m.nroLegajo, m.nombre, m.apellido, m.dni, m.direccion, m.telefono, m.mail,
+				LOS_GEDEDES.rangoEtario_fx(m.fecha_nac), m.costo_hora
+			FROM LOS_GEDEDES.mecanico m
+		
+		COMMIT TRANSACTION
+	END TRY
+
+	BEGIN CATCH
+		ROLLBACK TRANSACTION;
+		DECLARE @errorDescripcion VARCHAR(255)
+		SELECT @errorDescripcion = ERROR_MESSAGE() + ' Error en el insert de la dimension Mecanico';
+        THROW 50000, @errorDescripcion, 1
+	END CATCH
+END
+GO
+
+--PROCEDURE DIMENSION MATERIAL--
+
+IF EXISTS (SELECT * FROM sys.objects WHERE name = 'cargarDimensionMaterial')
+	DROP PROCEDURE LOS_GEDEDES.cargarDimensionMaterial
+GO
+
+CREATE PROCEDURE LOS_GEDEDES.cargarDimensionMaterial
+AS
+BEGIN
+	BEGIN TRY
+		BEGIN TRANSACTION
+			
+			INSERT INTO LOS_GEDEDES.BI_dimension_material (codigo, descripcion, precioBase, cantidad)
+			SELECT DISTINCT m.codigo, m.descripcion, m.precio, mt.cantidad 
+			FROM LOS_GEDEDES.material m 
+				JOIN LOS_GEDEDES.material_tarea mt ON (m.codigo = mt.codMaterial)
+		
+		COMMIT TRANSACTION
+	END TRY
+
+	BEGIN CATCH
+		ROLLBACK TRANSACTION;
+		DECLARE @errorDescripcion VARCHAR(255)
+		SELECT @errorDescripcion = ERROR_MESSAGE() + ' Error en el insert de la dimension Material';
+        THROW 50000, @errorDescripcion, 1
+	END CATCH
+END
+GO
+
+--PROCEDURE DIMENSION TAREA--
+
+IF EXISTS (SELECT * FROM sys.objects WHERE name = 'cargarDimensionTarea')
+	DROP PROCEDURE LOS_GEDEDES.cargarDimensionTarea
+GO
+
+CREATE PROCEDURE LOS_GEDEDES.cargarDimensionTarea
+AS
+BEGIN
+	BEGIN TRY
+		BEGIN TRANSACTION
+			
+			INSERT INTO LOS_GEDEDES.BI_dimension_tarea (codigo, descripcion, tipo)
+			SELECT t.codigo, t.descripcion, t.tipo 
+			FROM LOS_GEDEDES.tarea t
+		
+		COMMIT TRANSACTION
+	END TRY
+
+	BEGIN CATCH
+		ROLLBACK TRANSACTION;
+		DECLARE @errorDescripcion VARCHAR(255)
+		SELECT @errorDescripcion = ERROR_MESSAGE() + ' Error en el insert de la dimension Tarea';
+        THROW 50000, @errorDescripcion, 1
+	END CATCH
+END
+GO
 
 --PROCEDURE DIMENSION CAMION--
 
@@ -489,4 +588,5 @@ EXEC LOS_GEDEDES.cargarDimensionRecorrido
 EXEC LOS_GEDEDES.cargarDimensionTiempo
 EXEC LOS_GEDEDES.cargarDimensionCamion
 EXEC LOS_GEDEDES.cargarFactTableViaje
+
 
