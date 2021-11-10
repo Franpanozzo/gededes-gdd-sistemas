@@ -558,15 +558,22 @@ BEGIN
 	BEGIN TRY
 		BEGIN TRANSACTION
 
-			/*Directamente cargo todas las PK de las dimensiones porque basicamente no tengo que hacer nada mas que eso,
-			no hace falta hacer un join*/
-
-			INSERT INTO LOS_GEDEDES.BI_reparacion (patenteCamion, codigoMarca, codigoModelo, choferLegajo, codigoTarea,
+			INSERT INTO LOS_GEDEDES.BI_reparacion (patenteCamion, codigoMarca, codigoModelo, mecanicoLegajo, codigoTarea,
 			codigoMaterial, tiempo, idTaller)
-			SELECT c.patente, mar.codigo, mod.codigo, mec.nroLegajo, tar.codigo, mat.codigo, tiem.idTiempo, tall.id
-			FROM LOS_GEDEDES.BI_dimension_camion c, LOS_GEDEDES.BI_dimension_marca mar, LOS_GEDEDES.BI_dimension_modelo mod,
-			LOS_GEDEDES.BI_dimension_mecanico mec, LOS_GEDEDES.BI_dimension_tarea tar, LOS_GEDEDES.BI_dimension_material mat,
-			LOS_GEDEDES.BI_dimension_tiempo tiem, LOS_GEDEDES.BI_dimension_taller tall --No se si esta bien
+			SELECT DISTINCT c.patente, mar.codigo, mo.codigo, m.nroLegajo, ta.codigo, ma.codigo,  dt.idTiempo, t.id
+			FROM LOS_GEDEDES.Orden_Trabajo o_t
+    			JOIN LOS_GEDEDES.BI_dimension_tiempo dt ON (YEAR(o_t.fechaCarga) = dt.anio AND 
+       				 MONTH(o_t.fechaCarga) = dt.mes  )
+    			JOIN LOS_GEDEDES.Camion c ON (c.patente = o_t.patenteCamion)
+    			JOIN LOS_GEDEDES.Marca mar ON (mar.codigo = c.codigoMarca)
+    			JOIN LOS_GEDEDES.Modelo mo ON (mo.codigoMarca = mar.codigo)
+    			JOIN LOS_GEDEDES.tarea_orden t_o ON (t_o.nroOrden = o_t.nroOrden)
+    			JOIN LOS_GEDEDES.mecanico m  ON (m.nroLegajo = t_o.legajoMecanico)
+    			JOIN LOS_GEDEDES.taller t ON (m.idTaller = t.id)
+    			JOIN LOS_GEDEDES.Ciudad ci ON (ci.codigoCiudad = t.codCiudad)
+    			JOIN LOS_GEDEDES.tarea ta ON (ta.codigo = t_o.codTarea)
+    			JOIN LOS_GEDEDES.material_tarea m_t ON (m_t.codTarea = ta.codigo)
+    			JOIN LOS_GEDEDES.material ma ON (ma.codigo = m_t.codMaterial)
 
 		COMMIT TRANSACTION
 	END TRY
@@ -583,10 +590,10 @@ GO
 -------EXEC DE LOS PROCEDURES--------
 
 EXEC LOS_GEDEDES.cargarDimensionChofer
-EXEC LOS_GEDES.cargarFactTableReparacion
 EXEC LOS_GEDEDES.cargarDimensionRecorrido
 EXEC LOS_GEDEDES.cargarDimensionTiempo
 EXEC LOS_GEDEDES.cargarDimensionCamion
 EXEC LOS_GEDEDES.cargarFactTableViaje
+EXEC LOS_GEDES.cargarFactTableReparacion
 
 
