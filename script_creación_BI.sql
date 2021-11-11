@@ -267,23 +267,6 @@ FOREIGN KEY (idTaller) REFERENCES LOS_GEDEDES.BI_dimension_taller
 
 ----------LLENADO DE LAS DIMENSIONES Y TABLA DE HECHOS-------------
 
-INSERT INTO LOS_GEDEDES.BI_dimension_chofer (nroLegajo,nombre,apellido,dni,direccion,telefono,mail,fecha_nac,costo_hora, rangoEtario)
-SELECT c.nroLegajo, c.nombre, c.apellido, c.dni, c.direccion, c.telefono, c.mail, c.fecha_nac, c.costo_hora, LOS_GEDEDES.rangoEtario_fx(c.fecha_nac)
-FROM LOS_GEDEDES.Chofer c
-
-INSERT INTO LOS_GEDEDES.BI_dimension_marca (codigo, nombre) 
-SELECT codigo, nombre
-FROM LOS_GEDEDES.Marca
-
-INSERT INTO LOS_GEDEDES.BI_dimension_modelo (codigo, modelo, velocidadMaxima, capacidadTanque, capacidadCarga)
-SELECT codigo, modelo, velocidadMaxima, capacidadTanque, capacidadCarga
-FROM LOS_GEDEDES.Modelo
-
-INSERT INTO LOS_GEDEDES.BI_dimension_paquete (nroPaquete, tipo, largoMax, precioBase, pesoMax, altoMax, precioFinalPaquete, cantidad)
-SELECT tp.nroPaquete, tp.tipo, tp.largoMax, tp.precioBase, tp.pesoMax, tp.altoMax, pv.precioFinalPaquete, pv.cantidad
-FROM LOS_GEDEDES.Paquete_viaje pv 
-JOIN LOS_GEDEDES.Tipo_Paquete tp ON (pv.nroPaquete = tp.nroPaquete)
-
 --PROCEDURE DIMENSION TALLER--
 
 IF EXISTS (SELECT * FROM sys.objects WHERE name = 'cargarDimensionTaller')
@@ -515,6 +498,91 @@ BEGIN
 END
 GO
 
+--PROCEDURE DIMENSION MARCA--
+
+IF EXISTS (SELECT * FROM sys.objects WHERE name = 'cargarDimensionMarca')
+	DROP PROCEDURE LOS_GEDEDES.cargarDimensionMarca
+GO
+
+CREATE PROCEDURE LOS_GEDEDES.cargarDimensionMarca
+AS
+BEGIN
+	BEGIN TRY
+		BEGIN TRANSACTION
+
+			INSERT INTO LOS_GEDEDES.BI_dimension_marca (codigo, nombre) 
+			SELECT codigo, nombre
+			FROM LOS_GEDEDES.Marca
+
+		COMMIT TRANSACTION
+	END TRY
+
+	BEGIN CATCH
+		ROLLBACK TRANSACTION;
+		DECLARE @errorDescripcion VARCHAR(255)
+		SELECT @errorDescripcion = ERROR_MESSAGE() + ' Error en el insert de la dimension marca';
+        THROW 50000, @errorDescripcion, 1
+	END CATCH
+END
+GO
+
+--PROCEDURE DIMENSION MODELO--
+
+IF EXISTS (SELECT * FROM sys.objects WHERE name = 'cargarDimensionModelo')
+	DROP PROCEDURE LOS_GEDEDES.cargarDimensionModelo
+GO
+
+CREATE PROCEDURE LOS_GEDEDES.cargarDimensionModelo
+AS
+BEGIN
+	BEGIN TRY
+		BEGIN TRANSACTION
+
+			INSERT INTO LOS_GEDEDES.BI_dimension_modelo (codigo, modelo, velocidadMaxima, capacidadTanque, capacidadCarga)
+			SELECT codigo, modelo, velocidadMaxima, capacidadTanque, capacidadCarga
+			FROM LOS_GEDEDES.Modelo
+
+		COMMIT TRANSACTION
+	END TRY
+
+	BEGIN CATCH
+		ROLLBACK TRANSACTION;
+		DECLARE @errorDescripcion VARCHAR(255)
+		SELECT @errorDescripcion = ERROR_MESSAGE() + ' Error en el insert de la dimension modelo';
+        THROW 50000, @errorDescripcion, 1
+	END CATCH
+END
+GO
+
+--PROCEDURE DIMENSION PAQUETE--
+
+IF EXISTS (SELECT * FROM sys.objects WHERE name = 'cargarDimensionPaquete')
+	DROP PROCEDURE LOS_GEDEDES.cargarDimensionPaquete
+GO
+
+CREATE PROCEDURE LOS_GEDEDES.cargarDimensionPaquete
+AS
+BEGIN
+	BEGIN TRY
+		BEGIN TRANSACTION
+
+			INSERT INTO LOS_GEDEDES.BI_dimension_paquete (nroPaquete, tipo, largoMax, precioBase, pesoMax, altoMax, precioFinalPaquete, cantidad)
+			SELECT tp.nroPaquete, tp.tipo, tp.largoMax, tp.precioBase, tp.pesoMax, tp.altoMax, pv.precioFinalPaquete, pv.cantidad
+			FROM LOS_GEDEDES.Paquete_viaje pv 
+			JOIN LOS_GEDEDES.Tipo_Paquete tp ON (pv.nroPaquete = tp.nroPaquete)
+
+		COMMIT TRANSACTION
+	END TRY
+
+	BEGIN CATCH
+		ROLLBACK TRANSACTION;
+		DECLARE @errorDescripcion VARCHAR(255)
+		SELECT @errorDescripcion = ERROR_MESSAGE() + ' Error en el insert de la dimension paquete';
+        THROW 50000, @errorDescripcion, 1
+	END CATCH
+END
+GO
+
 --PROCEDURE FACT TABLE VIAJE--
 
 IF EXISTS (SELECT * FROM sys.objects WHERE name = 'cargarFactTableViaje')
@@ -593,6 +661,9 @@ EXEC LOS_GEDEDES.cargarDimensionChofer
 EXEC LOS_GEDEDES.cargarDimensionRecorrido
 EXEC LOS_GEDEDES.cargarDimensionTiempo
 EXEC LOS_GEDEDES.cargarDimensionCamion
+EXEC LOS_GEDEDES.cargarDimensionMarca
+EXEC LOS_GEDEDES.cargarDimensionModelo
+EXEC LOS_GEDEDES.cargarDimensionPaquete
 EXEC LOS_GEDEDES.cargarFactTableViaje
 EXEC LOS_GEDES.cargarFactTableReparacion
 
