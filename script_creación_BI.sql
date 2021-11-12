@@ -126,14 +126,14 @@ rangoEtario 	NVARCHAR(15),
 PRIMARY KEY (nroLegajo)
 );
 
-/*
+
 CREATE TABLE LOS_GEDEDES.BI_dimension_OT(
 nroOrden		INT, 
 estado			NVARCHAR(255),
-fechaCarga		NVARCHAR(255), Quiza con la dimension tiempo no sea necesario este campo
+duracion		INT, --Quiza con la dimension tiempo no sea necesario este campo
 PRIMARY KEY (nroOrden)
 );
-*/
+
 
 CREATE TABLE LOS_GEDEDES.BI_dimension_camion(
 patente		NVARCHAR(255),
@@ -249,23 +249,76 @@ codigoModelo		INT,
 mecanicoLegajo 		INT,
 codigoTarea			INT,
 codigoMaterial 		NVARCHAR(100),
---nroOrdenTrabajo 	INT,
+nroOrdenTrabajo 	INT,
 tiempo 				INT,
 idTaller			INT,
 PRIMARY KEY(patenteCamion, codigoMarca, codigoModelo, mecanicoLegajo, codigoTarea,
-codigoMaterial, /*nroOrdenTrabajo,*/ tiempo, idTaller),
+codigoMaterial, nroOrdenTrabajo, tiempo, idTaller),
 FOREIGN KEY (patenteCamion) REFERENCES LOS_GEDEDES.BI_dimension_camion,
 FOREIGN KEY (codigoMarca) REFERENCES LOS_GEDEDES.BI_dimension_marca,
 FOREIGN KEY (codigoModelo) REFERENCES LOS_GEDEDES.BI_dimension_modelo,
 FOREIGN KEY (mecanicoLegajo) REFERENCES LOS_GEDEDES.BI_dimension_mecanico,
 FOREIGN KEY (codigoTarea) REFERENCES LOS_GEDEDES.BI_dimension_tarea,
 FOREIGN KEY (codigoMaterial) REFERENCES LOS_GEDEDES.BI_dimension_material,
---FOREIGN KEY (nroOrdenTrabajo) REFERENCES LOS_GEDEDES.BI_dimension_OT,
+FOREIGN KEY (nroOrdenTrabajo) REFERENCES LOS_GEDEDES.BI_dimension_OT,
 FOREIGN KEY (tiempo) REFERENCES LOS_GEDEDES.BI_dimension_tiempo,
 FOREIGN KEY (idTaller) REFERENCES LOS_GEDEDES.BI_dimension_taller
 );
 
 ----------LLENADO DE LAS DIMENSIONES Y TABLA DE HECHOS-------------
+
+--PROCEDURE DIMENSION OT--
+
+IF EXISTS (SELECT * FROM sys.objects WHERE name = 'cargarDimensionOT')
+	DROP PROCEDURE LOS_GEDEDES.cargarDimensionOT
+GO
+
+CREATE PROCEDURE LOS_GEDEDES.cargarDimensionOT
+AS
+BEGIN
+	BEGIN TRY
+		BEGIN TRANSACTION
+			
+			INSERT INTO LOS_GEDEDES.BI_dimension_OT(nroOrden, estado, duracion)
+			SELECT ot.nroOrden, e.descripcion, DATEDIFF(DAY, MIN(t_o.fechaInicio), MAX(t_o.fechaFin))
+			FROM LOS_GEDEDES.Orden_Trabajo ot 
+				JOIN LOS_GEDEDES.Estado e ON (ot.estado = e.codigo)
+				JOIN LOS_GEDEDES.tarea_orden t_o ON (t_o.nroOrden = ot.nroOrden)
+			GROUP BY ot.nroOrden, e.descripcion
+			ORDER BY ot.nroOrden, e.descripcion
+		/*
+
+		SELECT ot.nroOrden, e.descripcion, t_o.codTarea,t_o.fechaInicio, t_o.fechaFin
+		FROM LOS_GEDEDES.Orden_Trabajo ot 
+			JOIN LOS_GEDEDES.Estado e ON (ot.estado = e.codigo)
+			JOIN LOS_GEDEDES.tarea_orden t_o ON (t_o.nroOrden = ot.nroOrden)
+		ORDER BY ot.nroOrden, e.descripcion
+
+		SELECT DISTINCT CAMION_PATENTE, ORDEN_TRABAJO_FECHA, TAREA_CODIGO, TAREA_FECHA_INICIO, TAREA_FECHA_FIN 
+		FROM gd_esquema.Maestra
+		WHERE ORDEN_TRABAJO_FECHA IS NOT NULL
+		ORDER BY CAMION_PATENTE, ORDEN_TRABAJO_FECHA, TAREA_CODIGO
+
+		SELECT ot.nroOrden, e.descripcion, SUM(DATEDIFF(DAY, t_o.fechaInicio, t_o.fechaFin))
+			FROM LOS_GEDEDES.Orden_Trabajo ot 
+				JOIN LOS_GEDEDES.Estado e ON (ot.estado = e.codigo)
+				JOIN LOS_GEDEDES.tarea_orden t_o ON (t_o.nroOrden = ot.nroOrden)
+			GROUP BY ot.nroOrden, e.descripcion
+			ORDER BY ot.nroOrden, e.descripcion
+		*/
+
+		COMMIT TRANSACTION
+	END TRY
+
+	BEGIN CATCH
+		ROLLBACK TRANSACTION;
+		DECLARE @errorDescripcion VARCHAR(255)
+		SELECT @errorDescripcion = ERROR_MESSAGE() + ' Error en el insert de la dimension OT';
+        THROW 50000, @errorDescripcion, 1
+	END CATCH
+END
+GO
+
 
 --PROCEDURE DIMENSION TALLER--
 
@@ -626,9 +679,10 @@ BEGIN
 	BEGIN TRY
 		BEGIN TRANSACTION
 
-			INSERT INTO LOS_GEDEDES.BI_reparacion (patenteCamion, codigoMarca, codigoModelo, mecanicoLegajo, codigoTarea,
-			codigoMaterial, tiempo, idTaller)
-			SELECT DISTINCT c.patente, mar.codigo, mo.codigo, m.nroLegajo, ta.codigo, ma.codigo,  dt.idTiempo, t.id
+			INSERT INTO LOS_GEDEDES.BI_reparacion (patenteCamion, codigoMarca, codigoModelo, mecanicoLegajo, 
+			codigoTarea, codigoMaterial, nroOrdenTrabajo, tiempo, idTaller)
+			SELECT DISTINCT c.patente, mar.codigo, mo.codigo, m.nroLegajo, ta.codigo, ma.codigo,
+			o_t.nroOrden, dt.idTiempo, t.id
 			FROM LOS_GEDEDES.Orden_Trabajo o_t
     			JOIN LOS_GEDEDES.BI_dimension_tiempo dt ON (YEAR(o_t.fechaCarga) = dt.anio AND 
        				 MONTH(o_t.fechaCarga) = dt.mes  )
@@ -664,7 +718,40 @@ EXEC LOS_GEDEDES.cargarDimensionCamion
 EXEC LOS_GEDEDES.cargarDimensionMarca
 EXEC LOS_GEDEDES.cargarDimensionModelo
 EXEC LOS_GEDEDES.cargarDimensionPaquete
+EXEC LOS_GEDEDES.cargarDimensionOT
+EXEC LOS_GEDEDES.cargarDimensionMaterial
+EXEC LOS_GEDEDES.cargarDimensionMecanico
+EXEC LOS_GEDEDES.cargarDimensionTaller
+EXEC LOS_GEDEDES.cargarDimensionTarea
 EXEC LOS_GEDEDES.cargarFactTableViaje
-EXEC LOS_GEDES.cargarFactTableReparacion
+EXEC LOS_GEDEDES.cargarFactTableReparacion
+
+
+-- VISTA 1--
+/*
+SELECT ft1.patenteCamion, t.cuatrimestre, MAX(ot.duracion) tiempoFueraDeServicio
+FROM LOS_GEDEDES.BI_reparacion ft1
+	JOIN LOS_GEDEDES.BI_dimension_OT ot ON (ft1.nroOrdenTrabajo = ot.nroOrden)
+	JOIN LOS_GEDEDES.BI_dimension_tiempo t ON (ft1.tiempo = t.idTiempo)
+GROUP BY ft1.patenteCamion, t.cuatrimestre
+ORDER BY ft1.patenteCamion, t.cuatrimestre
+*/
+--VISTA 2--
+/*
+ Las 5 tareas que más se realizan por modelo de camión
+*/
+/*
+SELECT TOP 5 ft.codigoModelo, (
+	SELECT ft1.codigoTarea
+	FROM LOS_GEDEDES.BI_reparacion ft1
+	WHERE ft1.codigoModelo = ft.codigoModelo
+	ORDER BY COUNT(ft1.codigoTarea)) 
+FROM LOS_GEDEDES.BI_reparacion ft
+
+SELECT TOP 5 ft.codigoModelo, ft.codigoTarea
+FROM LOS_GEDEDES.BI_reparacion ft
+GROUP BY ft.codigoModelo
+ORDER BY COUNT(ft.codigoTarea)
+*/
 
 
