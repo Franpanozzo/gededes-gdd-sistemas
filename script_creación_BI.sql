@@ -116,6 +116,13 @@ IF EXISTS (select * from sys.objects where object_id = OBJECT_ID('LOS_GEDEDES.BI
 IF EXISTS (select * from sys.objects where object_id = OBJECT_ID('LOS_GEDEDES.BI_dimension_taller') and type = 'U')
 	DROP TABLE LOS_GEDEDES.BI_dimension_taller
 
+------------ DROP VIEWS ------------------------
+
+IF EXISTS (select * from sys.objects where object_id = OBJECT_ID('LOS_GEDEDES.v_MaterialesMasUsadosPorTaller') and type = 'V')
+	DROP VIEW LOS_GEDEDES.v_MaterialesMasUsadosPorTaller
+
+IF EXISTS (select * from sys.objects where object_id = OBJECT_ID('LOS_GEDEDES.v_CostoPromedioPorRangoEtario') and type = 'V')
+	DROP VIEW LOS_GEDEDES.v_costoPromedioPorRangoEtario
   
 ------------ CREACION DE TABLAS ----------------
 
@@ -830,4 +837,30 @@ GROUP BY m.modelo, tm.codigoTarea, cantidad
 ORDER BY m.modelo DESC, tm.cantidad DESC
 */
 
+-- VISTA 5
+/*Los 10 materiales más utilizados por taller*/
+/*
+CREATE VIEW LOS_GEDEDES.v_MaterialesMasUsadosPorTaller (nroTaller, codMaterial, cantidad)
+AS
+SELECT r.idTaller , r.codigoMaterial, m.cantidad 
+FROM LOS_GEDEDES.BI_reparacion r JOIN LOS_GEDEDES.BI_dimension_tarea t ON r.codigoTarea = t.codigo
+								 JOIN LOS_GEDEDES.BI_dimension_material m ON r.codigoMaterial = m.codigo
+WHERE r.codigoMaterial IN (
+	SELECT taux.cod
+	FROM(SELECT DISTINCT TOP 10 r2.codigoMaterial cod,m2.cantidad cant
+		FROM LOS_GEDEDES.BI_reparacion r2 JOIN LOS_GEDEDES.BI_dimension_material m2 ON r2.codigoMaterial = m2.codigo
+		WHERE r2.idTaller = r.idTaller
+		ORDER BY m2.cantidad DESC) taux)
+GROUP BY r.idTaller, r.codigoMaterial, m.cantidad
+ORDER BY r.idTaller, m.cantidad DESC
+*/
 
+-- VISTA 7 
+/*Costo promedio x rango etario de choferes.*/
+/*
+CREATE VIEW LOS_GEDEDES.v_CostoPromedioPorRangoEtario (rangoEtario, promedio)
+AS
+SELECT c.rangoEtario , (SUM(c.costo_hora)/COUNT(v.choferLegajo)) 
+FROM LOS_GEDEDES.BI_viaje v JOIN LOS_GEDEDES.BI_dimension_chofer c ON v.choferLegajo = c.nroLegajo
+GROUP BY c.rangoEtario
+*/
