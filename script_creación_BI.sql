@@ -80,6 +80,9 @@ IF EXISTS (select * from sys.objects where object_id = OBJECT_ID('LOS_GEDEDES.BI
 IF EXISTS (select * from sys.objects where object_id = OBJECT_ID('LOS_GEDEDES.BI_tarea_por_modelo') and type = 'U')
 	DROP TABLE LOS_GEDEDES.BI_tarea_por_modelo
 
+IF EXISTS (select * from sys.objects where object_id = OBJECT_ID('LOS_GEDEDES.BI_ganancia_por_camion') and type = 'U')
+	DROP TABLE LOS_GEDEDES.BI_ganancia_por_camion
+
 IF EXISTS (select * from sys.objects where object_id = OBJECT_ID('LOS_GEDEDES.BI_dimension_camion') and type = 'U')
 	DROP TABLE LOS_GEDEDES.BI_dimension_camion
   
@@ -123,6 +126,12 @@ IF EXISTS (select * from sys.objects where object_id = OBJECT_ID('LOS_GEDEDES.v_
 
 IF EXISTS (select * from sys.objects where object_id = OBJECT_ID('LOS_GEDEDES.v_CostoPromedioPorRangoEtario') and type = 'V')
 	DROP VIEW LOS_GEDEDES.v_costoPromedioPorRangoEtario
+
+IF EXISTS (select * from sys.objects where object_id = OBJECT_ID('LOS_GEDEDES.v_FacturacionPorRecorridoPorCuatrimestre') and type = 'V')
+	DROP VIEW LOS_GEDEDES.v_FacturacionPorRecorridoPorCuatrimestre
+
+IF EXISTS (select * from sys.objects where object_id = OBJECT_ID('LOS_GEDEDES.v_GananciaPorCamion') and type = 'V')
+	DROP VIEW LOS_GEDEDES.v_GananciaPorCamion
   
 ------------ CREACION DE TABLAS ----------------
 
@@ -218,7 +227,7 @@ PRIMARY KEY (codigo),
 )
 
 CREATE TABLE LOS_GEDEDES.BI_dimension_paquete(
-id					INT IDENTITY (1,1),
+id					INT,
 nroPaquete			INT,
 tipo				NVARCHAR(8),
 largoMax			DECIMAL(18,2),
@@ -297,6 +306,21 @@ cantidad		INT,  -- Cuantas veces se hizo una tarea
 PRIMARY KEY(codigoModelo, codigoTarea),
 FOREIGN KEY (codigoModelo) REFERENCES LOS_GEDEDES.BI_dimension_modelo,
 FOREIGN KEY (codigoTarea) REFERENCES LOS_GEDEDES.BI_dimension_tarea
+);
+
+CREATE TABLE LOS_GEDEDES.BI_ganancia_por_camion(
+choferLegajo 		INT,
+patenteCamion		NVARCHAR(255),
+nroPaquete 			INT,
+mecanicoLegajo      INT,
+codigoMaterial      NVARCHAR(100),
+naftaConsumida		DECIMAL(18,2),
+PRIMARY KEY (choferLegajo, patenteCamion, mecanicoLegajo, codigoMaterial, nroPaquete),
+FOREIGN KEY (nroPaquete) REFERENCES LOS_GEDEDES.BI_dimension_paquete,
+FOREIGN KEY (patenteCamion) REFERENCES LOS_GEDEDES.BI_dimension_camion,
+FOREIGN KEY (choferLegajo) REFERENCES LOS_GEDEDES.BI_dimension_chofer,
+FOREIGN KEY (mecanicoLegajo) REFERENCES LOS_GEDEDES.BI_dimension_mecanico,
+FOREIGN KEY (codigoMaterial) REFERENCES LOS_GEDEDES.BI_dimension_material
 );
 
 
@@ -633,8 +657,8 @@ BEGIN
 	BEGIN TRY
 		BEGIN TRANSACTION
 
-			INSERT INTO LOS_GEDEDES.BI_dimension_paquete (nroPaquete, tipo, largoMax, precioBase, pesoMax, altoMax, precioFinalPaquete, cantidad)
-			SELECT tp.nroPaquete, tp.tipo, tp.largoMax, tp.precioBase, tp.pesoMax, tp.altoMax, pv.precioFinalPaquete, pv.cantidad
+			INSERT INTO LOS_GEDEDES.BI_dimension_paquete (id , nroPaquete, tipo, largoMax, precioBase, pesoMax, altoMax, precioFinalPaquete, cantidad)
+			SELECT  pv.id ,tp.nroPaquete, tp.tipo, tp.largoMax, tp.precioBase, tp.pesoMax, tp.altoMax, pv.precioFinalPaquete, pv.cantidad
 			FROM LOS_GEDEDES.Paquete_viaje pv 
 			JOIN LOS_GEDEDES.Tipo_Paquete tp ON (pv.nroPaquete = tp.nroPaquete)
 
@@ -791,6 +815,50 @@ BEGIN
 END
 GO
 
+
+-- PROCEDURE FACT TABLE REPARACION --
+
+/*
+IF EXISTS (SELECT * FROM sys.objects WHERE name = 'cargarFactTableGananciaPorCamion')
+	DROP PROCEDURE LOS_GEDEDES.cargarFactTableGananciaPorCamion
+GO
+
+CREATE PROCEDURE LOS_GEDEDES.cargarFactTableGananciaPorCamion
+AS
+BEGIN
+	BEGIN TRY
+		BEGIN TRANSACTION
+
+			INSERT INTO LOS_GEDEDES.BI_ganancia_por_camion (patenteCamion, choferLegajo, nroPaquete, mecanicoLegajo, codigoMaterial, naftaConsumida)
+			SELECT DISTINCT c.patente, ch.nroLegajo, p.id, m.nroLegajo, ma.codigo, naftaConsumida
+			FROM LOS_GEDEDES.Orden_Trabajo o_t
+    			JOIN LOS_GEDEDES.Camion c ON (c.patente = o_t.patenteCamion)
+    			JOIN LOS_GEDEDES.tarea_orden t_o ON (t_o.nroOrden = o_t.nroOrden)
+    			JOIN LOS_GEDEDES.mecanico m  ON (m.nroLegajo = t_o.legajoMecanico)
+    			JOIN LOS_GEDEDES.taller t ON (m.idTaller = t.id)
+    			JOIN LOS_GEDEDES.Ciudad ci ON (ci.codigoCiudad = t.codCiudad)
+    			JOIN LOS_GEDEDES.tarea ta ON (ta.codigo = t_o.codTarea)
+    			JOIN LOS_GEDEDES.material_tarea m_t ON (m_t.codTarea = ta.codigo)
+    			JOIN LOS_GEDEDES.material ma ON (ma.codigo = m_t.codMaterial)
+				JOIN LOS_GEDEDES.Viaje v ON (c.patente = v.patenteCamion)
+				JOIN LOS_GEDEDES.Chofer ch ON(v.choferLegajo = ch.nroLegajo)
+				JOIN LOS_GEDEDES.Paquete_viaje p ON(p.nroViaje = v.nroViaje)
+
+
+		COMMIT TRANSACTION
+	END TRY
+
+	BEGIN CATCH
+		ROLLBACK TRANSACTION;
+		DECLARE @errorDescripcion VARCHAR(255)
+		SELECT @errorDescripcion = ERROR_MESSAGE() + ' Error en el insert de la tabla de hechos de ganancia por camion';
+        THROW 50000, @errorDescripcion, 1
+	END CATCH
+END
+GO
+
+*/
+
 -------EXEC DE LOS PROCEDURES--------
 
 EXEC LOS_GEDEDES.cargarDimensionChofer
@@ -809,8 +877,6 @@ EXEC LOS_GEDEDES.cargarFactTableViaje
 EXEC LOS_GEDEDES.cargarFactTableReparacion
 EXEC LOS_GEDEDES.cargarFactTableFueraDeServicio
 EXEC LOS_GEDEDES.cargarFactTableTareaPorModelo
-
-
 
 
 -- VISTA 1--
@@ -855,6 +921,16 @@ GROUP BY r.idTaller, r.codigoMaterial, m.cantidad
 ORDER BY r.idTaller, m.cantidad DESC
 */
 
+-- VISTA 6
+/*
+CREATE VIEW LOS_GEDEDES.v_FacturacionPorRecorridoPorCuatrimestre (facturacionTotal, recorrido, cuatrimestre)
+AS
+SELECT SUM(p.precioFinalPaquete), fv.recorrido, t.cuatrimestre
+FROM LOS_GEDEDES.BI_viaje fv JOIN LOS_GEDEDES.BI_dimension_tiempo t ON(fv.tiempo = t.idTiempo)
+							 JOIN LOS_GEDEDES.BI_dimension_paquete p ON(fv.nroPaquete = p.id)
+GROUP BY fv.recorrido, t.cuatrimestre
+*/
+
 -- VISTA 7 
 /*Costo promedio x rango etario de choferes.*/
 /*
@@ -863,4 +939,17 @@ AS
 SELECT c.rangoEtario , (SUM(c.costo_hora)/COUNT(v.choferLegajo)) 
 FROM LOS_GEDEDES.BI_viaje v JOIN LOS_GEDEDES.BI_dimension_chofer c ON v.choferLegajo = c.nroLegajo
 GROUP BY c.rangoEtario
+*/
+
+-- VISTA 8
+/*
+CREATE VIEW v_GananciaPorCamion (patenteCamion, ganancia)
+AS
+SELECT v.patenteCamion, SUM(p.precioFinalPaquete) + c.costo_hora + naftaConsumida * 100 + SUM(mat.precioBase) + m.costo_hora
+FROM LOS_GEDEDES.BI_viaje v JOIN LOS_GEDEDES.BI_reparacion r ON(v.patenteCamion = r.patenteCamion)
+                            JOIN LOS_GEDEDES.BI_dimension_paquete p ON(v.nroPaquete = p.id)
+							JOIN LOS_GEDEDES.BI_dimension_chofer c ON(v.choferLegajo = c.nroLegajo)
+							JOIN LOS_GEDEDES.BI_dimension_mecanico m ON(r.mecanicoLegajo = m.nroLegajo)
+							JOIN LOS_GEDEDES.BI_dimension_material mat ON(mat.codigo = r.codigoMaterial)
+GROUP BY v.patenteCamion, c.costo_hora, naftaConsumida, m.costo_hora
 */
