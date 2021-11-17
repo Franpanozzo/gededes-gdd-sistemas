@@ -861,11 +861,10 @@ FROM LOS_GEDEDES.BI_fuera_de_servicio ftr
 	JOIN LOS_GEDEDES.BI_dimension_OT ot ON (ftr.nroOrdenTrabajo = ot.nroOrden)
 	JOIN LOS_GEDEDES.BI_dimension_tiempo t ON (ftr.tiempo = t.idTiempo)
 GROUP BY ftr.patenteCamion, t.cuatrimestre
-ORDER BY ftr.patenteCamion, t.cuatrimestre
 GO
 
 -- VISTA 2--
-CREATE VIEW v_CostoDeMantenimiento (patenteCamion, idTaller, cuatrimestre, Costo_Mantenimiento)
+CREATE VIEW LOS_GEDEDES.v_CostoDeMantenimiento (patenteCamion, idTaller, cuatrimestre, Costo_Mantenimiento)
 AS
 	SELECT patenteCamion, idTaller, t.cuatrimestre, SUM(m.precioBase*m.cantidad) + SUM(me.costo_hora*ta.duracion*8)
 		FROM LOS_GEDEDES.BI_reparacion
@@ -878,7 +877,7 @@ GO
 
 
 -- VISTA 3--
-CREATE VIEW v_DesvioEstandarCostoTareaxTaller (idTaller, codigoTarea, desvioPromedioCosto)
+CREATE VIEW LOS_GEDEDES.v_DesvioEstandarCostoTareaxTaller (idTaller, codigoTarea, desvioPromedioCosto)
 AS
 	SELECT R.idTaller, R.codigoTarea, STDEV(TABLA_AUX.COSTO_TAREA)
 		FROM LOS_GEDEDES.BI_reparacion R
@@ -906,7 +905,6 @@ WHERE tm.codigoTarea IN (
 	WHERE tm1.codigoModelo = tm.codigoModelo
 	ORDER BY tm1.cantidad DESC)
 GROUP BY m.modelo, tm.codigoTarea, cantidad
-ORDER BY m.modelo DESC, tm.cantidad DESC
 GO
 
 -- VISTA 5
@@ -923,7 +921,6 @@ WHERE r.codigoMaterial IN (
 		WHERE r2.idTaller = r.idTaller
 		ORDER BY m2.cantidad DESC) taux)
 GROUP BY r.idTaller, r.codigoMaterial, m.cantidad
-ORDER BY r.idTaller, m.cantidad DESC
 GO
 
 -- VISTA 6
@@ -947,7 +944,7 @@ GO
 
 -- VISTA 8
 
-CREATE VIEW v_GananciaPorCamion (patenteCamion, ganancia)
+CREATE VIEW LOS_GEDEDES.v_GananciaPorCamion (patenteCamion, ganancia)
 AS
 SELECT v.patenteCamion, SUM(p.precioFinalPaquete) + v.costoViaje + SUM(m.precioBase*m.cantidad) + SUM(me.costo_hora*ta.duracion*8)
 FROM LOS_GEDEDES.BI_viaje v JOIN LOS_GEDEDES.BI_reparacion r ON(v.patenteCamion = r.patenteCamion)
