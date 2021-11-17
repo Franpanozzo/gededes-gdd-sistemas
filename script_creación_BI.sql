@@ -187,7 +187,7 @@ CREATE TABLE LOS_GEDEDES.BI_dimension_tarea(
 codigo			INT,
 descripcion		NVARCHAR(255),
 tipo			NVARCHAR(255),
-duracion		INT
+duracion  INT
 PRIMARY KEY (codigo)
 )
 
@@ -258,6 +258,8 @@ tiempo 				INT,
 nroPaquete 			INT,
 precioRecorrido		INT,
 naftaConsumida		DECIMAL(18,2),
+duracion            INT,
+costoViaje			DECIMAL(18,2),
 PRIMARY KEY (choferLegajo, patenteCamion, recorrido, tiempo, nroPaquete),
 FOREIGN KEY (nroPaquete) REFERENCES LOS_GEDEDES.BI_dimension_paquete,
 FOREIGN KEY (patenteCamion) REFERENCES LOS_GEDEDES.BI_dimension_camion,
@@ -690,9 +692,11 @@ BEGIN
         /*Como las dimensiones se cargan en base a nuestras tablas, directamente saco los datos de las FK de nuestras tablas, no hace falta que joinee por 
         la dimension que necesito, si total estas dimensiones tienen de PK las PK originales */
 			
-		INSERT INTO LOS_GEDEDES.BI_viaje (choferLegajo, patenteCamion, recorrido, tiempo, nroPaquete, precioRecorrido, naftaConsumida)
-		SELECT choferLegajo, patenteCamion, recorrido, LOS_GEDEDES.asignarTiempo_fx(fechaInicio), pv.id, precioRecorrido, naftaConsumida
+		INSERT INTO LOS_GEDEDES.BI_viaje (choferLegajo, patenteCamion, recorrido, tiempo, nroPaquete, precioRecorrido, naftaConsumida, duracion, costoViaje)
+		SELECT DISTINCT choferLegajo, patenteCamion, recorrido, LOS_GEDEDES.asignarTiempo_fx(fechaInicio), pv.id, precioRecorrido, naftaConsumida, DATEDIFF(DAY, v.fechaInicio, v.fechaFin), 
+		ch.costo_hora * DATEDIFF(DAY, v.fechaInicio, v.fechaFin) * 8
 		FROM LOS_GEDEDES.Viaje v JOIN LOS_GEDEDES.Paquete_viaje pv ON(pv.nroViaje = v.nroViaje)
+		                         JOIN LOS_GEDEDES.BI_dimension_chofer ch ON(ch.nroLegajo = v.choferLegajo)
 
 		COMMIT TRANSACTION
 	END TRY
@@ -817,49 +821,6 @@ END
 GO
 
 
--- PROCEDURE FACT TABLE REPARACION --
-
-/*
-IF EXISTS (SELECT * FROM sys.objects WHERE name = 'cargarFactTableGananciaPorCamion')
-	DROP PROCEDURE LOS_GEDEDES.cargarFactTableGananciaPorCamion
-GO
-
-CREATE PROCEDURE LOS_GEDEDES.cargarFactTableGananciaPorCamion
-AS
-BEGIN
-	BEGIN TRY
-		BEGIN TRANSACTION
-
-			INSERT INTO LOS_GEDEDES.BI_ganancia_por_camion (patenteCamion, choferLegajo, nroPaquete, mecanicoLegajo, codigoMaterial, naftaConsumida)
-			SELECT DISTINCT c.patente, ch.nroLegajo, p.id, m.nroLegajo, ma.codigo, naftaConsumida
-			FROM LOS_GEDEDES.Orden_Trabajo o_t
-    			JOIN LOS_GEDEDES.Camion c ON (c.patente = o_t.patenteCamion)
-    			JOIN LOS_GEDEDES.tarea_orden t_o ON (t_o.nroOrden = o_t.nroOrden)
-    			JOIN LOS_GEDEDES.mecanico m  ON (m.nroLegajo = t_o.legajoMecanico)
-    			JOIN LOS_GEDEDES.taller t ON (m.idTaller = t.id)
-    			JOIN LOS_GEDEDES.Ciudad ci ON (ci.codigoCiudad = t.codCiudad)
-    			JOIN LOS_GEDEDES.tarea ta ON (ta.codigo = t_o.codTarea)
-    			JOIN LOS_GEDEDES.material_tarea m_t ON (m_t.codTarea = ta.codigo)
-    			JOIN LOS_GEDEDES.material ma ON (ma.codigo = m_t.codMaterial)
-				JOIN LOS_GEDEDES.Viaje v ON (c.patente = v.patenteCamion)
-				JOIN LOS_GEDEDES.Chofer ch ON(v.choferLegajo = ch.nroLegajo)
-				JOIN LOS_GEDEDES.Paquete_viaje p ON(p.nroViaje = v.nroViaje)
-
-
-		COMMIT TRANSACTION
-	END TRY
-
-	BEGIN CATCH
-		ROLLBACK TRANSACTION;
-		DECLARE @errorDescripcion VARCHAR(255)
-		SELECT @errorDescripcion = ERROR_MESSAGE() + ' Error en el insert de la tabla de hechos de ganancia por camion';
-        THROW 50000, @errorDescripcion, 1
-	END CATCH
-END
-GO
-
-*/
-
 -------EXEC DE LOS PROCEDURES--------
 
 EXEC LOS_GEDEDES.cargarDimensionChofer
@@ -889,33 +850,6 @@ FROM LOS_GEDEDES.BI_fuera_de_servicio ftr
 GROUP BY ftr.patenteCamion, t.cuatrimestre
 ORDER BY ftr.patenteCamion, t.cuatrimestre
 */
-
-
--- VISTA 2--
-CREATE VIEW v_CostoDeMantenimiento (patenteCamion, idTaller, cuatrimestre, Costo_Mantenimiento)
-AS
-	SELECT patenteCamion, idTaller, t.cuatrimestre, SUM(m.precioBase*m.cantidad) + SUM(me.costo_hora*ta.duracion*8)
-		FROM LOS_GEDEDES.BI_reparacion
-			JOIN LOS_GEDEDES.BI_dimension_tiempo t ON tiempo = t.idTiempo
-			JOIN LOS_GEDEDES.BI_dimension_material m ON codigoMaterial = m.codigo 
-			JOIN LOS_GEDEDES.BI_dimension_mecanico me ON mecanicoLegajo = me.nroLegajo 
-			JOIN LOS_GEDEDES.BI_dimension_tarea ta ON codigoTarea = ta.codigo
-	GROUP BY patenteCamion, idTaller, t.cuatrimestre
-
-
--- VISTA 3--
-CREATE VIEW v_DesvioEstandarCostoTareaxTaller (idTaller, codigoTarea, desvioPromedioCosto)
-AS
-	SELECT R.idTaller, R.codigoTarea, STDEV(TABLA_AUX.COSTO_TAREA)
-		FROM LOS_GEDEDES.BI_reparacion R
-			JOIN (SELECT codigoMaterial, idTaller, mecanicoLegajo, codigoTarea, SUM(m.precioBase*m.cantidad) + SUM(me.costo_hora*ta.duracion*8) COSTO_TAREA 
-					FROM LOS_GEDEDES.BI_reparacion
-					JOIN LOS_GEDEDES.BI_dimension_material m ON codigoMaterial = m.codigo 
-					JOIN LOS_GEDEDES.BI_dimension_mecanico me ON mecanicoLegajo = me.nroLegajo
-					JOIN LOS_GEDEDES.BI_dimension_tarea ta ON codigoTarea = ta.codigo
-					GROUP BY idTaller, codigoTarea, codigoMaterial, mecanicoLegajo
-					) TABLA_AUX ON R.codigoMaterial = TABLA_AUX.codigoMaterial AND R.mecanicoLegajo = TABLA_AUX.mecanicoLegajo AND R.codigoTarea = TABLA_AUX.codigoTarea 
-	GROUP BY R.idTaller, R.codigoTarea
 
 --VISTA 4--
 /*
@@ -973,11 +907,11 @@ GROUP BY c.rangoEtario
 /*
 CREATE VIEW v_GananciaPorCamion (patenteCamion, ganancia)
 AS
-SELECT v.patenteCamion, SUM(p.precioFinalPaquete) + c.costo_hora + naftaConsumida * 100 + SUM(mat.precioBase) + m.costo_hora
+SELECT v.patenteCamion, SUM(p.precioFinalPaquete) + v.costoViaje + SUM(m.precioBase*m.cantidad) + SUM(me.costo_hora*ta.duracion*8)
 FROM LOS_GEDEDES.BI_viaje v JOIN LOS_GEDEDES.BI_reparacion r ON(v.patenteCamion = r.patenteCamion)
                             JOIN LOS_GEDEDES.BI_dimension_paquete p ON(v.nroPaquete = p.id)
-							JOIN LOS_GEDEDES.BI_dimension_chofer c ON(v.choferLegajo = c.nroLegajo)
-							JOIN LOS_GEDEDES.BI_dimension_mecanico m ON(r.mecanicoLegajo = m.nroLegajo)
-							JOIN LOS_GEDEDES.BI_dimension_material mat ON(mat.codigo = r.codigoMaterial)
-GROUP BY v.patenteCamion, c.costo_hora, naftaConsumida, m.costo_hora
+							JOIN LOS_GEDEDES.BI_dimension_material m ON (r.codigoMaterial = m.codigo) 
+							JOIN LOS_GEDEDES.BI_dimension_mecanico me ON (r.mecanicoLegajo = me.nroLegajo)
+							JOIN LOS_GEDEDES.BI_dimension_tarea ta ON (r.codigoTarea = ta.codigo)
+GROUP BY v.patenteCamion, v.costoViaje
 */
