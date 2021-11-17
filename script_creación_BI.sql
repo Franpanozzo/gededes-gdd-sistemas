@@ -1,5 +1,3 @@
-------------- FUNCIONES AUXILIARES --------------
-
 IF EXISTS (select * from sys.objects where object_id = OBJECT_ID('LOS_GEDEDES.rangoEtario_fx') and type = 'FN')
 	DROP FUNCTION LOS_GEDEDES.rangoEtario_fx
 
@@ -132,6 +130,18 @@ IF EXISTS (select * from sys.objects where object_id = OBJECT_ID('LOS_GEDEDES.v_
 
 IF EXISTS (select * from sys.objects where object_id = OBJECT_ID('LOS_GEDEDES.v_GananciaPorCamion') and type = 'V')
 	DROP VIEW LOS_GEDEDES.v_GananciaPorCamion
+
+IF EXISTS (select * from sys.objects where object_id = OBJECT_ID('LOS_GEDEDES.v_CostoDeMantenimiento') and type = 'V')
+	DROP VIEW LOS_GEDEDES.v_CostoDeMantenimiento
+
+IF EXISTS (select * from sys.objects where object_id = OBJECT_ID('LOS_GEDEDES.v_DesvioEstandarCostoTareaxTaller') and type = 'V')
+	DROP VIEW LOS_GEDEDES.v_DesvioEstandarCostoTareaxTaller
+
+IF EXISTS (select * from sys.objects where object_id = OBJECT_ID('LOS_GEDEDES.v_tareasMasRealizadasPorModelo') and type = 'V')
+	DROP VIEW LOS_GEDEDES.v_tareasMasRealizadasPorModelo
+
+IF EXISTS (select * from sys.objects where object_id = OBJECT_ID('LOS_GEDEDES.v_FueraDeServicioCamionPorCuatrimestre') and type = 'V')
+	DROP VIEW LOS_GEDEDES.v_FueraDeServicioCamionPorCuatrimestre
   
 ------------ CREACION DE TABLAS ----------------
 
@@ -839,20 +849,54 @@ EXEC LOS_GEDEDES.cargarFactTableViaje
 EXEC LOS_GEDEDES.cargarFactTableReparacion
 EXEC LOS_GEDEDES.cargarFactTableFueraDeServicio
 EXEC LOS_GEDEDES.cargarFactTableTareaPorModelo
+GO
 
 
 -- VISTA 1--
-/*
-SELECT ftr.patenteCamion, t.cuatrimestre, MAX(ot.duracion) tiempoFueraDeServicio
+
+CREATE VIEW LOS_GEDEDES.v_FueraDeServicioCamionPorCuatrimestre (patenteCamion, cuatrimestre, tiempoFueraDeServicio)
+AS
+SELECT ftr.patenteCamion, t.cuatrimestre, MAX(ot.duracion)
 FROM LOS_GEDEDES.BI_fuera_de_servicio ftr
 	JOIN LOS_GEDEDES.BI_dimension_OT ot ON (ftr.nroOrdenTrabajo = ot.nroOrden)
 	JOIN LOS_GEDEDES.BI_dimension_tiempo t ON (ftr.tiempo = t.idTiempo)
 GROUP BY ftr.patenteCamion, t.cuatrimestre
 ORDER BY ftr.patenteCamion, t.cuatrimestre
-*/
+GO
+
+-- VISTA 2--
+CREATE VIEW v_CostoDeMantenimiento (patenteCamion, idTaller, cuatrimestre, Costo_Mantenimiento)
+AS
+	SELECT patenteCamion, idTaller, t.cuatrimestre, SUM(m.precioBase*m.cantidad) + SUM(me.costo_hora*ta.duracion*8)
+		FROM LOS_GEDEDES.BI_reparacion
+			JOIN LOS_GEDEDES.BI_dimension_tiempo t ON tiempo = t.idTiempo
+			JOIN LOS_GEDEDES.BI_dimension_material m ON codigoMaterial = m.codigo 
+			JOIN LOS_GEDEDES.BI_dimension_mecanico me ON mecanicoLegajo = me.nroLegajo 
+			JOIN LOS_GEDEDES.BI_dimension_tarea ta ON codigoTarea = ta.codigo
+	GROUP BY patenteCamion, idTaller, t.cuatrimestre
+GO
+
+
+-- VISTA 3--
+CREATE VIEW v_DesvioEstandarCostoTareaxTaller (idTaller, codigoTarea, desvioPromedioCosto)
+AS
+	SELECT R.idTaller, R.codigoTarea, STDEV(TABLA_AUX.COSTO_TAREA)
+		FROM LOS_GEDEDES.BI_reparacion R
+			JOIN (SELECT codigoMaterial, idTaller, mecanicoLegajo, codigoTarea, SUM(m.precioBase*m.cantidad) + SUM(me.costo_hora*ta.duracion*8) COSTO_TAREA 
+					FROM LOS_GEDEDES.BI_reparacion
+					JOIN LOS_GEDEDES.BI_dimension_material m ON codigoMaterial = m.codigo 
+					JOIN LOS_GEDEDES.BI_dimension_mecanico me ON mecanicoLegajo = me.nroLegajo
+					JOIN LOS_GEDEDES.BI_dimension_tarea ta ON codigoTarea = ta.codigo
+					GROUP BY idTaller, codigoTarea, codigoMaterial, mecanicoLegajo
+					) TABLA_AUX ON R.codigoMaterial = TABLA_AUX.codigoMaterial AND R.mecanicoLegajo = TABLA_AUX.mecanicoLegajo AND R.codigoTarea = TABLA_AUX.codigoTarea 
+	GROUP BY R.idTaller, R.codigoTarea
+GO
+
 
 --VISTA 4--
-/*
+
+CREATE VIEW LOS_GEDEDES.v_tareasMasRealizadasPorModelo (modelo, codTarea, cantidad)
+AS
 SELECT m.modelo, tm.codigoTarea, cantidad
 FROM LOS_GEDEDES.BI_tarea_por_modelo tm
 	JOIN LOS_GEDEDES.BI_dimension_modelo m ON (m.codigo = tm.codigoModelo)
@@ -863,11 +907,10 @@ WHERE tm.codigoTarea IN (
 	ORDER BY tm1.cantidad DESC)
 GROUP BY m.modelo, tm.codigoTarea, cantidad
 ORDER BY m.modelo DESC, tm.cantidad DESC
-*/
+GO
 
 -- VISTA 5
-/*Los 10 materiales más utilizados por taller*/
-/*
+
 CREATE VIEW LOS_GEDEDES.v_MaterialesMasUsadosPorTaller (nroTaller, codMaterial, cantidad)
 AS
 SELECT r.idTaller , r.codigoMaterial, m.cantidad 
@@ -881,30 +924,29 @@ WHERE r.codigoMaterial IN (
 		ORDER BY m2.cantidad DESC) taux)
 GROUP BY r.idTaller, r.codigoMaterial, m.cantidad
 ORDER BY r.idTaller, m.cantidad DESC
-*/
+GO
 
 -- VISTA 6
-/*
+
 CREATE VIEW LOS_GEDEDES.v_FacturacionPorRecorridoPorCuatrimestre (facturacionTotal, recorrido, cuatrimestre)
 AS
 SELECT SUM(p.precioFinalPaquete), fv.recorrido, t.cuatrimestre
 FROM LOS_GEDEDES.BI_viaje fv JOIN LOS_GEDEDES.BI_dimension_tiempo t ON(fv.tiempo = t.idTiempo)
 							 JOIN LOS_GEDEDES.BI_dimension_paquete p ON(fv.nroPaquete = p.id)
 GROUP BY fv.recorrido, t.cuatrimestre
-*/
+GO
 
 -- VISTA 7 
-/*Costo promedio x rango etario de choferes.*/
-/*
+
 CREATE VIEW LOS_GEDEDES.v_CostoPromedioPorRangoEtario (rangoEtario, promedio)
 AS
 SELECT c.rangoEtario , (SUM(c.costo_hora)/COUNT(v.choferLegajo)) 
 FROM LOS_GEDEDES.BI_viaje v JOIN LOS_GEDEDES.BI_dimension_chofer c ON v.choferLegajo = c.nroLegajo
 GROUP BY c.rangoEtario
-*/
+GO
 
 -- VISTA 8
-/*
+
 CREATE VIEW v_GananciaPorCamion (patenteCamion, ganancia)
 AS
 SELECT v.patenteCamion, SUM(p.precioFinalPaquete) + v.costoViaje + SUM(m.precioBase*m.cantidad) + SUM(me.costo_hora*ta.duracion*8)
@@ -914,4 +956,4 @@ FROM LOS_GEDEDES.BI_viaje v JOIN LOS_GEDEDES.BI_reparacion r ON(v.patenteCamion 
 							JOIN LOS_GEDEDES.BI_dimension_mecanico me ON (r.mecanicoLegajo = me.nroLegajo)
 							JOIN LOS_GEDEDES.BI_dimension_tarea ta ON (r.codigoTarea = ta.codigo)
 GROUP BY v.patenteCamion, v.costoViaje
-*/
+GO
