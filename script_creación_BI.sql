@@ -187,6 +187,7 @@ CREATE TABLE LOS_GEDEDES.BI_dimension_tarea(
 codigo			INT,
 descripcion		NVARCHAR(255),
 tipo			NVARCHAR(255),
+duracion		INT
 PRIMARY KEY (codigo)
 )
 
@@ -459,8 +460,8 @@ BEGIN
 	BEGIN TRY
 		BEGIN TRANSACTION
 			
-			INSERT INTO LOS_GEDEDES.BI_dimension_tarea (codigo, descripcion, tipo)
-			SELECT t.codigo, t.descripcion, t.tipo 
+			INSERT INTO LOS_GEDEDES.BI_dimension_tarea (codigo, descripcion, tipo, duracion)
+			SELECT t.codigo, t.descripcion, t.tipo, t.tiempoEstimado
 			FROM LOS_GEDEDES.tarea t
 		
 		COMMIT TRANSACTION
@@ -888,6 +889,33 @@ FROM LOS_GEDEDES.BI_fuera_de_servicio ftr
 GROUP BY ftr.patenteCamion, t.cuatrimestre
 ORDER BY ftr.patenteCamion, t.cuatrimestre
 */
+
+
+-- VISTA 2--
+CREATE VIEW v_CostoDeMantenimiento (patenteCamion, idTaller, cuatrimestre, Costo_Mantenimiento)
+AS
+	SELECT patenteCamion, idTaller, t.cuatrimestre, SUM(m.precioBase*m.cantidad) + SUM(me.costo_hora*ta.duracion*8)
+		FROM LOS_GEDEDES.BI_reparacion
+			JOIN LOS_GEDEDES.BI_dimension_tiempo t ON tiempo = t.idTiempo
+			JOIN LOS_GEDEDES.BI_dimension_material m ON codigoMaterial = m.codigo 
+			JOIN LOS_GEDEDES.BI_dimension_mecanico me ON mecanicoLegajo = me.nroLegajo 
+			JOIN LOS_GEDEDES.BI_dimension_tarea ta ON codigoTarea = ta.codigo
+	GROUP BY patenteCamion, idTaller, t.cuatrimestre
+
+
+-- VISTA 3--
+CREATE VIEW v_DesvioEstandarCostoTareaxTaller (idTaller, codigoTarea, desvioPromedioCosto)
+AS
+	SELECT R.idTaller, R.codigoTarea, STDEV(TABLA_AUX.COSTO_TAREA)
+		FROM LOS_GEDEDES.BI_reparacion R
+			JOIN (SELECT codigoMaterial, idTaller, mecanicoLegajo, codigoTarea, SUM(m.precioBase*m.cantidad) + SUM(me.costo_hora*ta.duracion*8) COSTO_TAREA 
+					FROM LOS_GEDEDES.BI_reparacion
+					JOIN LOS_GEDEDES.BI_dimension_material m ON codigoMaterial = m.codigo 
+					JOIN LOS_GEDEDES.BI_dimension_mecanico me ON mecanicoLegajo = me.nroLegajo
+					JOIN LOS_GEDEDES.BI_dimension_tarea ta ON codigoTarea = ta.codigo
+					GROUP BY idTaller, codigoTarea, codigoMaterial, mecanicoLegajo
+					) TABLA_AUX ON R.codigoMaterial = TABLA_AUX.codigoMaterial AND R.mecanicoLegajo = TABLA_AUX.mecanicoLegajo AND R.codigoTarea = TABLA_AUX.codigoTarea 
+	GROUP BY R.idTaller, R.codigoTarea
 
 --VISTA 4--
 /*
