@@ -321,22 +321,6 @@ FOREIGN KEY (codigoModelo) REFERENCES LOS_GEDEDES.BI_dimension_modelo,
 FOREIGN KEY (codigoTarea) REFERENCES LOS_GEDEDES.BI_dimension_tarea
 );
 
-CREATE TABLE LOS_GEDEDES.BI_ganancia_por_camion(
-choferLegajo 		INT,
-patenteCamion		NVARCHAR(255),
-nroPaquete 			INT,
-mecanicoLegajo      INT,
-codigoMaterial      NVARCHAR(100),
-naftaConsumida		DECIMAL(18,2),
-PRIMARY KEY (choferLegajo, patenteCamion, mecanicoLegajo, codigoMaterial, nroPaquete),
-FOREIGN KEY (nroPaquete) REFERENCES LOS_GEDEDES.BI_dimension_paquete,
-FOREIGN KEY (patenteCamion) REFERENCES LOS_GEDEDES.BI_dimension_camion,
-FOREIGN KEY (choferLegajo) REFERENCES LOS_GEDEDES.BI_dimension_chofer,
-FOREIGN KEY (mecanicoLegajo) REFERENCES LOS_GEDEDES.BI_dimension_mecanico,
-FOREIGN KEY (codigoMaterial) REFERENCES LOS_GEDEDES.BI_dimension_material
-);
-
-
 ----------LLENADO DE LAS DIMENSIONES Y TABLA DE HECHOS-------------
 
 --PROCEDURE DIMENSION OT--
