@@ -930,7 +930,7 @@ GO
 
 CREATE VIEW LOS_GEDEDES.v_GananciaPorCamion (patenteCamion, ganancia)
 AS
-SELECT v.patenteCamion, SUM(p.precioFinalPaquete) + v.costoViaje + SUM(m.precioBase*m.cantidad) + SUM(me.costo_hora*ta.duracion*8)
+SELECT v.patenteCamion, SUM(p.precioFinalPaquete) - v.costoViaje - SUM(m.precioBase*m.cantidad) - SUM(me.costo_hora*ta.duracion*8)
 FROM LOS_GEDEDES.BI_viaje v JOIN LOS_GEDEDES.BI_reparacion r ON(v.patenteCamion = r.patenteCamion)
                             JOIN LOS_GEDEDES.BI_dimension_paquete p ON(v.nroPaquete = p.id)
 							JOIN LOS_GEDEDES.BI_dimension_material m ON (r.codigoMaterial = m.codigo) 
