@@ -864,14 +864,15 @@ GO
 CREATE VIEW LOS_GEDEDES.v_DesvioEstandarCostoTareaxTaller (idTaller, codigoTarea, desvioPromedioCosto)
 AS
 	SELECT R.idTaller, R.codigoTarea, STDEV(TABLA_AUX.COSTO_TAREA)
-		FROM LOS_GEDEDES.BI_reparacion R
-			JOIN (SELECT codigoMaterial, idTaller, mecanicoLegajo, codigoTarea, SUM(m.precioBase*m.cantidad) + SUM(me.costo_hora*ta.duracion*8) COSTO_TAREA 
-					FROM LOS_GEDEDES.BI_reparacion
-					JOIN LOS_GEDEDES.BI_dimension_material m ON codigoMaterial = m.codigo 
-					JOIN LOS_GEDEDES.BI_dimension_mecanico me ON mecanicoLegajo = me.nroLegajo
-					JOIN LOS_GEDEDES.BI_dimension_tarea ta ON codigoTarea = ta.codigo
-					GROUP BY idTaller, codigoTarea, codigoMaterial, mecanicoLegajo
-					) TABLA_AUX ON R.codigoMaterial = TABLA_AUX.codigoMaterial AND R.mecanicoLegajo = TABLA_AUX.mecanicoLegajo AND R.codigoTarea = TABLA_AUX.codigoTarea 
+	FROM LOS_GEDEDES.BI_reparacion R
+		JOIN (SELECT idTaller, codigoTarea, 
+			SUM(m.precioBase*m.cantidad) + SUM(me.costo_hora*ta.duracion*8) COSTO_TAREA 
+			FROM LOS_GEDEDES.BI_reparacion r1
+			JOIN LOS_GEDEDES.BI_dimension_material m ON r1.codigoMaterial = m.codigo 
+			JOIN LOS_GEDEDES.BI_dimension_mecanico me ON r1.mecanicoLegajo = me.nroLegajo
+			JOIN LOS_GEDEDES.BI_dimension_tarea ta ON r1.codigoTarea = ta.codigo
+			GROUP BY idTaller, codigoTarea
+		) TABLA_AUX ON TABLA_AUX.idTaller = R.idTaller AND R.codigoTarea = TABLA_AUX.codigoTarea 
 	GROUP BY R.idTaller, R.codigoTarea
 GO
 
